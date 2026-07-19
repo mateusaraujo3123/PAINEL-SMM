@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Dashboard</title>
-    <link rel="stylesheet" href="dashboard.css">
+    <!-- Link corrigido para puxar o CSS separado -->
+    <link rel="stylesheet" href="./dashboard.css">
 </head>
 <body>
 
@@ -12,94 +13,83 @@
     <div class="sidebar">
         <div>
             <div class="logo-section">
-                <span>🌐</span> Painel SMM
+                <span>📈</span> Painel SMM
             </div>
             
             <a href="dashboard.html" class="active">🏠 Resumo</a>
             
-            <div class="menu-group-title">Principal</div>
+            <div class="menu-group-title">Serviços</div>
             <a href="#">🛒 Novo Pedido</a>
-            <a href="#">⚡ Serviços</a>
-            <a href="#">📜 Pedidos</a>
+            <a href="#">⚡ Lista de Serviços</a>
+            <a href="#">📜 Histórico de Pedidos</a>
             <a href="#">💳 Adicionar Saldo</a>
             
-            <div class="menu-group-title">Admin</div>
-            <a href="#">👥 Usuários</a>
-            <a href="#">⚙️ Configurações</a>
+            <div class="menu-group-title">Configurações</div>
+            <a href="#">👤 Meu Perfil</a>
+            <a href="#">🔌 Integração API</a>
         </div>
 
+        <!-- Perfil do Usuário Logado -->
         <div class="user-profile-bar">
-            <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
+            <div style="width: 36px; height: 36px; background-color: #5856d6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
             <div>
                 <div style="font-size: 14px; font-weight: 700;">Minha Conta</div>
-                <div style="font-size: 12px; color: #10b981;">● Online</div>
+                <div style="font-size: 12px; color: #34c759;">● Cliente Online</div>
             </div>
         </div>
     </div>
 
-    <!-- Conteúdo Principal -->
+    <!-- Área de Conteúdo Principal -->
     <div class="main-content">
         
-        <div class="header-panel">
-            <div>
-                <h1>Resumo</h1>
-                <div style="color: #6b7280; font-size: 13px; margin-top: 4px;">Domingo, 19 de jul.</div>
-            </div>
+        <div>
+            <h1>Resumo Geral</h1>
+            <div style="color: #6b7280; font-size: 14px;">Acompanhe o status dos seus serviços de marketing</div>
         </div>
 
-        <!-- Grade de Ações Rápidas (Estilo Atalhos do seu Print) -->
+        <!-- Grade de Ações Rápidas (Estilo Blocos Coloridos) -->
         <div class="shortcuts-grid">
-            <div class="shortcut-btn btn-purple">
-                <span>✈️</span>
-                <div class="shortcut-title">Criar Novo<br>Pedido Rápido</div>
+            <div class="shortcut-card bg-purple">
+                <span>🛒</span>
+                <div class="shortcut-title">Novo Pedido<br>Seguidores/Curtidas</div>
             </div>
-            <div class="shortcut-btn btn-orange">
-                <span>📸</span>
-                <div class="shortcut-title">Serviços do<br>Instagram</div>
+            <div class="shortcut-card bg-orange">
+                <span>🔥</span>
+                <div class="shortcut-title">Serviços Mais<br>Vendidos de Hoje</div>
             </div>
-            <div class="shortcut-btn btn-pink">
-                <span>📋</span>
-                <div class="shortcut-title">Ver Histórico<br>de Pedidos</div>
+            <div class="shortcut-card bg-pink">
+                <span>💳</span>
+                <div class="shortcut-title">Adicionar Saldo<br>via PIX / Stripe</div>
             </div>
-            <div class="shortcut-btn btn-green">
-                <span>📥</span>
-                <div class="shortcut-title">Baixar Mídias<br>Sociais</div>
+            <div class="shortcut-card bg-blue">
+                <span>💬</span>
+                <div class="shortcut-title">Suporte e<br>Chamados Abrir</div>
             </div>
         </div>
 
-        <!-- Grade de Estatísticas e Anéis (Estilo Fitness) -->
+        <!-- Métricas Reais do Painel SMM -->
         <div class="metrics-grid">
-            <div class="metric-card">
-                <div class="metric-header">Círculo de Atividade</div>
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <div style="width: 80px; height: 80px; border: 8px solid #ff2d55; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">➔</div>
-                    <div>
-                        <div style="font-size: 12px; color: #9ca3af; font-weight: 600;">Movimento</div>
-                        <div class="metric-value txt-pink">21/300 CAL</div>
-                    </div>
-                </div>
+            <div class="metric-box">
+                <div class="metric-title">Saldo na Plataforma</div>
+                <div class="metric-number txt-green">R$ 152,40</div>
             </div>
 
-            <div class="metric-card">
-                <div class="metric-header">Sessões Recentes</div>
-                <div class="metric-value txt-purple">00:24:15</div>
-                <div style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Média Total: 1 sessão por dia</div>
+            <div class="metric-box">
+                <div class="metric-title">Total de Pedidos Enviados</div>
+                <div class="metric-number txt-blue">128</div>
             </div>
 
-            <div class="metric-card">
-                <div class="metric-header">Distância Percorrida</div>
-                <div class="metric-value txt-blue">0,48 KM</div>
-                <div style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Hoje</div>
+            <div class="metric-box">
+                <div class="metric-title">Total Gasto Acumulado</div>
+                <div class="metric-number txt-purple">R$ 342,50</div>
             </div>
         </div>
 
-        <!-- Barra de Status Comercial Inferior -->
-        <div class="status-bar-footer">
-            <div class="status-item"><span style="color: #34c759;">💰</span> Saldo: R$ 152,40</div>
-            <div class="status-item"><span style="color: #007aff;">📦</span> Pedidos: 128</div>
-            <div class="status-item"><span style="color: #af52de;">⚡</span> Serviços: 34</div>
-            <div class="status-item"><span style="color: #ff9500;">👥</span> Usuários: 562</div>
-            <div class="status-item"><span style="color: #34c759;">🟢</span> API Status: Online</div>
+        <!-- Barra de Rodapé com Status das APIs de Provedores SMM -->
+        <div class="status-footer">
+            <div class="status-item">📦 Serviços Ativos: <span style="color: #0a84ff;">34</span></div>
+            <div class="status-item">👥 Usuários na Plataforma: <span style="color: #ff9500;">562</span></div>
+            <div class="status-item">🟢 Status da API do Provedor: <span style="color: #34c759;">Online</span></div>
         </div>
 
     </div>
