@@ -1,0 +1,78 @@
+/* login.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: #000000; /* Preto absoluto Apple */
+    color: #ffffff;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+.login-container {
+    background-color: #1c1c1e; /* Cinza escuro dos cards iOS */
+    padding: 40px;
+    border-radius: 14px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    width: 100%;
+    max-width: 360px;
+    box-sizing: border-box;
+}
+
+h1 {
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+    color: #ffffff;
+    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: #aeaea2;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+input {
+    width: 100%;
+    padding: 12px;
+    background-color: #2c2c2e; /* Campo de texto levemente mais claro */
+    border: 1px solid transparent;
+    border-radius: 10px;
+    color: #ffffff;
+    box-sizing: border-box;
+    font-size: 15px;
+}
+
+input:focus {
+    outline: none;
+    border-color: #30d158; /* Borda acende em verde neon ao clicar */
+}
+
+button {
+    width: 100%;
+    background-color: #30d158; /* Verde neon da Apple */
+    color: #000000; /* Texto preto para alto contraste */
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: opacity 0.2s;
+}
+
+button:hover {
+    opacity: 0.9;
+}
