@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Painel SMM</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Menu Lateral do Painel -->
+    <div class="sidebar">
+        <h2>SMM Panel</h2>
+        <a href="#" class="active">📊 Dashboard</a>
+        <a href="#">🛒 Novo Pedido</a>
+        <a href="#">📜 Histórico</a>
+        <a href="#">💳 Adicionar Saldo</a>
+    </div>
+
+    <!-- Área Principal da Tela -->
+    <div class="main-content">
+        <h1>Bem-vindo de volta!</h1>
+
+        <!-- Cartões de Resumo do Cliente (Dashboard) -->
+        <div class="cards-grid">
+            <div class="card">
+                <div class="card-title">Saldo Disponível</div>
+                <div class="card-value balance">R$ 150,00</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Total Gasto</div>
+                <div class="card-value">R$ 342,50</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Pedidos Feitos</div>
+                <div class="card-value">12</div>
+            </div>
+        </div>
+
+        <!-- Seção de Ação (Abaixo dos Cartões) -->
+        <div class="panel-section">
+            <h2 style="font-size: 18px; margin-top: 0; margin-bottom: 20px; color: #111827;">Criar Novo Pedido</h2>
+            <form id="smmForm">
+                <div class="form-group">
+                    <label>ID do Serviço:</label>
+                    <input type="number" id="servico_id" required placeholder="Ex: 101">
+                </div>
+                <div class="form-group">
+                    <label>Link do Perfil/Post:</label>
+                    <input type="url" id="link_rede_social" required placeholder="https://instagram.com...">
+                </div>
+                <div class="form-group">
+                    <label>Quantidade:</label>
+                    <input type="number" id="quantidade" required placeholder="Ex: 1000">
+                </div>
+                <button type="submit">Enviar Pedido</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('smmForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const dados = {
+                servico_id: parseInt(document.getElementById('servico_id').value),
+                link_rede_social: document.getElementById('link_rede_social').value,
+                quantidade: parseInt(document.getElementById('quantidade').value)
+            };
+
+            try {
+                const resposta = await fetch('http://127.0.0', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(dados)
+                });
+
+                const resultado = await resposta.json();
+                
+                if (resposta.ok) {
+                    alert('✅ Sucesso! ' + resultado.mensagem);
+                } else {
+                    alert('❌ Erro na validação dos dados.');
+                }
+            } catch (erro) {
+                alert('❌ Erro: Ligue o FastAPI no seu computador (fastapi dev main.py)!');
+            }
+        });
+    </script>
+</body>
+</html>
