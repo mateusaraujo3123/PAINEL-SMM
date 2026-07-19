@@ -312,9 +312,26 @@
             <div class="status-item">📦 Serviços Ativos: <span style="color: #0a84ff;">34</span></div>
             <div class="status-item">👥 Usuários na Plataforma: <span style="color: #ff9500;">562</span></div>
             <div class="status-item">🟢 Status da API do Provedor: <span style="color: #34c759;">Online</span></div>
-        </div>
+        </div> <!-- 🔴 FECHAMENTO DA BARRA DE RODAPÉ -->
 
-    </div>
+    </div> <!-- 🔴 FECHAMENTO DA MAIN-CONTENT -->
 
+    <!-- Bloco de Scripts de Inteligência -->
+    <script>
+        // Faz os botões coloridos mudarem de página ao clicar
+        document.querySelectorAll('.shortcuts-grid .shortcut-card').forEach((card, index) => {
+            card.addEventListener('click', () => {
+                if (index === 0) window.location.href = "novo-pedido.html";     // Roxo
+                if (index === 1) window.location.href = "lista-servicos.html";  // Laranja
+                if (index === 2) window.location.href = "adicionar-saldo.html"; // Rosa
+                if (index === 3) window.location.href = "suporte.html";         // Azul
+            });
+        });
+
+        // Lógica do Botão para encolher / expandir a barra lateral
+        document.getElementById('toggleMenu').addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+        });
+    </script>
 </body>
 </html>
