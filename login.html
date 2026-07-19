@@ -1,0 +1,91 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel SMM - Entrar</title>
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo-login">📈 Painel SMM</div>
+        <div class="subtitle-login" id="formSubtitle">Entre na sua conta para gerenciar seus pedidos</div>
+
+        <!-- FORMULÁRIO DE LOGIN -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="login_email" required placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="login_senha" required placeholder="••••••••">
+            </div>
+            <button type="submit" class="btn-login">Acessar Painel</button>
+            <div class="toggle-form">
+                Não tem uma conta? <a href="#" id="btnIrParaCadastro">Cadastre-se</a>
+            </div>
+        </form>
+
+        <!-- FORMULÁRIO DE CADASTRO (Oculto por padrão via JS) -->
+        <form id="cadastroForm" style="display: none;">
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="cad_nome" placeholder="Seu Nome">
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" id="cad_email" placeholder="seu@email.com">
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" id="cad_senha" placeholder="Crie uma senha">
+            </div>
+            <button type="submit" class="btn-login" style="background-color: #34c759;">Criar Minha Conta</button>
+            <div class="toggle-form">
+                Já tem uma conta? <a href="#" id="btnIrParaLogin">Fazer Login</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+        const cadastroForm = document.getElementById('cadastroForm');
+        const formSubtitle = document.getElementById('formSubtitle');
+
+        // Alternar para a tela de Cadastro
+        document.getElementById('btnIrParaCadastro').addEventListener('click', (e) => {
+            e.preventDefault();
+            loginForm.style.display = 'none';
+            cadastroForm.style.display = 'block';
+            formSubtitle.innerText = 'Crie sua carteira e comece a turbinar suas redes';
+        });
+
+        // Alternar para a tela de Login
+        document.getElementById('btnIrParaLogin').addEventListener('click', (e) => {
+            e.preventDefault();
+            cadastroForm.style.display = 'none';
+            loginForm.style.display = 'block';
+            formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
+        });
+
+        // Simulação do Login (Mandando direto para o Dashboard)
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            // No futuro, o FastAPI validará o token JWT aqui antes de mudar de página
+            window.location.href = "dashboard.html";
+        });
+
+        // Simulação do Cadastro
+        cadastroForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('✅ Conta criada com sucesso! Faça login para acessar.');
+            cadastroForm.style.display = 'none';
+            loginForm.style.display = 'block';
+            formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
+        });
+    </script>
+</body>
+</html>
