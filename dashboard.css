@@ -1,17 +1,17 @@
 /* dashboard.css */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #0d111d; /* Azul-escuro profundo igual à imagem */
+    background-color: #0d111d; /* Azul escuro idêntico à imagem de referência */
     color: #ffffff;
     margin: 0;
     display: flex;
     height: 100vh;
 }
 
-/* Menu Lateral Esquerdo */
+/* Menu Lateral */
 .sidebar {
     width: 250px;
-    background-color: #161b26; /* Cinza azulado escuro */
+    background-color: #161b26;
     padding: 24px;
     box-sizing: border-box;
     display: flex;
@@ -49,17 +49,11 @@ body {
     border-radius: 8px;
     font-weight: 600;
     font-size: 14px;
-    transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar a.active {
     background-color: #212936;
-    color: #6366f1; /* Roxo/azul destaque */
-}
-
-.sidebar a:hover:not(.active) {
-    background-color: #1f293d;
-    color: #ffffff;
+    color: #6366f1;
 }
 
 .user-profile-bar {
@@ -70,109 +64,93 @@ body {
     border-top: 1px solid #212936;
 }
 
-/* Área de Conteúdo Principal */
+/* Área Principal */
 .main-content {
     flex: 1;
-    padding: 30px;
+    padding: 40px;
     overflow-y: auto;
     box-sizing: border-box;
 }
 
-/* Topo do Painel */
-.header-panel {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 25px;
-}
-
-.header-panel h1 {
-    font-size: 24px;
-    margin: 0;
+h1 {
+    font-size: 28px;
     font-weight: 700;
+    margin-top: 0;
+    margin-bottom: 5px;
 }
 
-/* GRADE DE BOTÕES (Estilo App Atalhos) */
+/* Grade de Blocos de Ações Rápidas (Estilo o topo da imagem) */
 .shortcuts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
-    margin-bottom: 30px;
+    margin: 25px 0;
 }
 
-.shortcut-btn {
+.shortcut-card {
     padding: 20px;
     border-radius: 12px;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    height: 100px;
+    height: 105px;
     box-sizing: border-box;
     font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Cores vibrantes idênticas aos blocos da imagem */
-.btn-purple { background-color: #5856d6; color: #ffffff; }
-.btn-orange { background-color: #ff9500; color: #ffffff; }
-.btn-pink   { background-color: #ff2d55; color: #ffffff; }
-.btn-green  { background-color: #34c759; color: #ffffff; }
-
-.shortcut-title {
     font-size: 14px;
-    margin-top: 10px;
 }
 
-/* GRADE DE METRICAS (Estilo Fitness/Resumo) */
+.bg-purple { background-color: #5856d6; }
+.bg-orange { background-color: #ff9500; }
+.bg-pink   { background-color: #ff2d55; }
+.bg-blue   { background-color: #007aff; }
+
+/* Grade de Métricas SMM Reais */
 .metrics-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 16px;
     margin-bottom: 30px;
 }
 
-.metric-card {
+.metric-box {
     background-color: #161b26;
     border: 1px solid #212936;
-    border-radius: 16px;
+    border-radius: 14px;
     padding: 24px;
     box-sizing: border-box;
 }
 
-.metric-header {
-    font-size: 14px;
+.metric-title {
+    font-size: 13px;
     color: #9ca3af;
     font-weight: 600;
-    margin-bottom: 15px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
 }
 
-.metric-value {
+.metric-number {
     font-size: 32px;
     font-weight: 800;
 }
 
-/* Cores neon de texto para os números */
-.txt-pink { color: #ff2d55; }
-.txt-purple { color: #af52de; }
-.txt-blue { color: #007aff; }
+.txt-green { color: #34c759; }
+.txt-blue { color: #0a84ff; }
+.txt-purple { color: #bf5af2; }
 
-/* Barra de Status do Rodapé */
-.status-bar-footer {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px;
+/* Barra de Status Inferior */
+.status-footer {
+    display: flex;
+    justify-content: space-between;
     background-color: #161b26;
-    padding: 16px;
+    padding: 16px 24px;
     border-radius: 12px;
     border: 1px solid #212936;
+    margin-top: 40px;
+    flex-wrap: wrap;
+    gap: 15px;
 }
 
 .status-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
     font-size: 14px;
     font-weight: 600;
 }
