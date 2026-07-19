@@ -1,0 +1,118 @@
+<!-- novo-pedido.html -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel SMM - Novo Pedido</title>
+    <!-- 🔴 CSS SEPARADO EM SEU PRÓPRIO CANTO -->
+    <link rel="stylesheet" href="novo-pedido.css">
+</head>
+<body>
+
+    <!-- Menu Lateral -->
+    <div class="sidebar">
+        <div>
+            <div class="logo-section">
+                <span>📈</span> Painel SMM
+            </div>
+            
+            <a href="dashboard.html">🏠 Resumo</a>
+            
+            <div class="menu-group-title">Serviços</div>
+            <a href="novo-pedido.html" class="active">🛒 Novo Pedido</a>
+            <a href="#">⚡ Lista de Serviços</a>
+            <a href="#">📜 Histórico de Pedidos</a>
+            <a href="adicionar-saldo.html">💳 Adicionar Saldo</a>
+            
+            <div class="menu-group-title">Configurações</div>
+            <a href="#">👤 Meu Perfil</a>
+            <a href="#">🔌 Integração API</a>
+        </div>
+
+        <div class="user-profile-bar">
+            <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
+            <div>
+                <div style="font-size: 14px; font-weight: 700;">Minha Conta</div>
+                <div style="font-size: 12px; color: #34c759;">● R$ 152,40</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Área de Conteúdo -->
+    <div class="main-content">
+        
+        <div class="header-panel">
+            <button class="toggle-menu-btn" id="toggleMenu">☰</button>
+            <div>
+                <h1>Novo Pedido</h1>
+                <div style="color: #6b7280; font-size: 14px; margin-top: 4px;">Selecione o serviço do provedor SMM desejado</div>
+            </div>
+        </div>
+
+        <!-- Formulário SMM -->
+        <div class="order-box">
+            <form id="orderForm">
+                
+                <div class="form-group">
+                    <label>Categoria</label>
+                    <select id="categoria">
+                        <option value="instagram_seg">Instagram - Seguidores Brasileiros 🇧🇷</option>
+                        <option value="instagram_cur">Instagram - Curtidas Mundiais 🌍</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Serviço</label>
+                    <select id="servico">
+                        <option value="101" data-preco="12.50">[ID 101] Seguidores Orgânicos - R$ 12,50 por 1000</option>
+                        <option value="102" data-preco="8.90">[ID 102] Seguidores Alta Qualidade - R$ 8,90 por 1000</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Link do Perfil ou Publicação</label>
+                    <input type="url" id="link_url" required placeholder="https://instagram.com">
+                </div>
+
+                <div class="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" id="qtd" min="100" required placeholder="Mínimo 100">
+                </div>
+
+                <!-- Calculadora de Custo -->
+                <div class="price-display">
+                    <span style="color: #9ca3af;">Custo do Pedido:</span>
+                    <span id="totalPrice" style="color: #34c759; font-size: 18px;">R$ 0,00</span>
+                </div>
+
+                <button type="submit" class="btn-submit">Confirmar e Descontar do Saldo</button>
+            </form>
+        </div>
+
+    </div>
+
+    <!-- JavaScript apenas para a inteligência da página -->
+    <script>
+        document.getElementById('toggleMenu').addEventListener('click', () => {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+        });
+
+        const inputQtd = document.getElementById('qtd');
+        const selectServico = document.getElementById('servico');
+        const displayPreco = document.getElementById('totalPrice');
+
+        function calcularPreco() {
+            const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
+            const precoPorMil = parseFloat(opcaoSelecionada.getAttribute('data-preco'));
+            const quantidade = parseInt(inputQtd.value) || 0;
+
+            const custoTotal = (quantidade / 1000) * precoPorMil;
+            displayPreco.innerText = 'R$ ' + custoTotal.toFixed(2).replace('.', ',');
+        }
+
+        inputQtd.addEventListener('input', calcularPreco);
+        selectServico.addEventListener('change', calcularPreco);
+    </script>
+</body>
+</html>
