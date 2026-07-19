@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - Painel SMM</title>
-    <!-- Conectando ao CSS específico do Dashboard -->
+    <!-- 🔴 LINK CORRIGIDO PARA O ARQUIVO SEPARADO -->
     <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
 
-    <!-- Menu Lateral do Painel -->
+    <!-- Menu Lateral -->
     <div class="sidebar">
         <h2>SMM Panel</h2>
         <a href="dashboard.html" class="active">📊 Dashboard</a>
@@ -18,11 +18,11 @@
         <a href="#">💳 Adicionar Saldo</a>
     </div>
 
-    <!-- Área Principal da Tela -->
+    <!-- Área de Conteúdo -->
     <div class="main-content">
         <h1>Bem-vindo de volta!</h1>
 
-        <!-- Cartões de Resumo do Cliente (Dashboard) -->
+        <!-- Cartões de Resumo -->
         <div class="cards-grid">
             <div class="card">
                 <div class="card-title">Saldo Disponível</div>
@@ -38,7 +38,7 @@
             </div>
         </div>
 
-        <!-- Seção de Ação (Abaixo dos Cartões) -->
+        <!-- Seção do Formulário -->
         <div class="panel-section">
             <h2>Criar Novo Pedido</h2>
             <form id="smmForm">
@@ -62,22 +62,18 @@
     <script>
         document.getElementById('smmForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-
             const dados = {
                 servico_id: parseInt(document.getElementById('servico_id').value),
                 link_rede_social: document.getElementById('link_rede_social').value,
                 quantidade: parseInt(document.getElementById('quantidade').value)
             };
-
             try {
                 const resposta = await fetch('http://127.0.0', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(dados)
                 });
-
                 const resultado = await resposta.json();
-                
                 if (resposta.ok) {
                     alert('✅ Sucesso! ' + resultado.mensagem);
                 } else {
