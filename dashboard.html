@@ -4,8 +4,182 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Dashboard</title>
-    <!-- Link corrigido para puxar o CSS separado -->
-    <link rel="stylesheet" href="dashboard.css">
+    <style>
+        /* ========================================================
+           LAYOUT PREMIUM SMM (ESTILO AZUL-ESCURO E BLOCOS)
+           ======================================================== */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0d111d !important; /* Azul escuro profundo */
+            color: #ffffff !important;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Menu Lateral */
+        .sidebar {
+            width: 250px;
+            background-color: #161b26 !important; /* Cinza azulado */
+            padding: 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            border-right: 1px solid #212936;
+            height: 100vh;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff !important;
+            margin-bottom: 30px;
+        }
+
+        .menu-group-title {
+            font-size: 11px;
+            color: #4b5563 !important;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 15px 0 8px 10px;
+            font-weight: 700;
+        }
+
+        .sidebar a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: #9ca3af !important;
+            text-decoration: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
+        .sidebar a.active {
+            background-color: #212936 !important;
+            color: #6366f1 !important; /* Roxo/azul destaque */
+        }
+
+        .user-profile-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-top: 15px;
+            border-top: 1px solid #212936;
+        }
+
+        /* Área Principal de Conteúdo */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+            overflow-y: auto;
+            box-sizing: border-box;
+            background-color: #0d111d !important;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #ffffff !important;
+        }
+
+        /* Grade de Blocos Coloridos (Estilo o topo da sua imagem) */
+        .shortcuts-grid {
+            display: flex;
+            gap: 16px;
+            margin: 25px 0;
+            flex-wrap: wrap;
+        }
+
+        .shortcut-card {
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 105px;
+            box-sizing: border-box;
+            font-weight: 700;
+            font-size: 14px;
+            flex: 1;
+            min-width: 180px;
+            color: #ffffff !important;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .bg-purple { background-color: #5856d6 !important; }
+        .bg-orange { background-color: #ff9500 !important; }
+        .bg-pink   { background-color: #ff2d55 !important; }
+        .bg-blue   { background-color: #007aff !important; }
+
+        .shortcut-title {
+            font-size: 14px;
+            margin-top: 10px;
+            line-height: 1.3;
+        }
+
+        /* Grade de Métricas SMM */
+        .metrics-grid {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .metric-box {
+            background-color: #161b26 !important;
+            border: 1px solid #212936;
+            border-radius: 14px;
+            padding: 24px;
+            box-sizing: border-box;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .metric-title {
+            font-size: 13px;
+            color: #9ca3af !important;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .metric-number {
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .txt-green { color: #34c759 !important; }
+        .txt-blue { color: #0a84ff !important; }
+        .txt-purple { color: #bf5af2 !important; }
+
+        /* Barra de Rodapé */
+        .status-footer {
+            display: flex;
+            justify-content: space-between;
+            background-color: #161b26 !important;
+            padding: 16px 24px;
+            border-radius: 12px;
+            border: 1px solid #212936;
+            margin-top: 40px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .status-item {
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
 </head>
 <body>
 
@@ -85,7 +259,7 @@
             </div>
         </div>
 
-        <!-- Barra de Rodapé com Status das APIs de Provedores SMM -->
+        <!-- Barra de Rodapé com Status -->
         <div class="status-footer">
             <div class="status-item">📦 Serviços Ativos: <span style="color: #0a84ff;">34</span></div>
             <div class="status-item">👥 Usuários na Plataforma: <span style="color: #ff9500;">562</span></div>
