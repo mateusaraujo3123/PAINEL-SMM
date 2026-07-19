@@ -3,86 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Painel SMM</title>
-    <!-- 🔴 LINK CORRIGIDO PARA O ARQUIVO SEPARADO -->
+    <title>Painel SMM - Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
 </head>
 <body>
 
-    <!-- Menu Lateral -->
+    <!-- Menu Lateral Esquerdo -->
     <div class="sidebar">
-        <h2>SMM Panel</h2>
-        <a href="dashboard.html" class="active">📊 Dashboard</a>
-        <a href="#">🛒 Novo Pedido</a>
-        <a href="#">📜 Histórico</a>
-        <a href="#">💳 Adicionar Saldo</a>
+        <div>
+            <div class="logo-section">
+                <span>🌐</span> Painel SMM
+            </div>
+            
+            <a href="dashboard.html" class="active">🏠 Resumo</a>
+            
+            <div class="menu-group-title">Principal</div>
+            <a href="#">🛒 Novo Pedido</a>
+            <a href="#">⚡ Serviços</a>
+            <a href="#">📜 Pedidos</a>
+            <a href="#">💳 Adicionar Saldo</a>
+            
+            <div class="menu-group-title">Admin</div>
+            <a href="#">👥 Usuários</a>
+            <a href="#">⚙️ Configurações</a>
+        </div>
+
+        <div class="user-profile-bar">
+            <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
+            <div>
+                <div style="font-size: 14px; font-weight: 700;">Minha Conta</div>
+                <div style="font-size: 12px; color: #10b981;">● Online</div>
+            </div>
+        </div>
     </div>
 
-    <!-- Área de Conteúdo -->
+    <!-- Conteúdo Principal -->
     <div class="main-content">
-        <h1>Bem-vindo de volta!</h1>
-
-        <!-- Cartões de Resumo -->
-        <div class="cards-grid">
-            <div class="card">
-                <div class="card-title">Saldo Disponível</div>
-                <div class="card-value balance">R$ 150,00</div>
-            </div>
-            <div class="card">
-                <div class="card-title">Total Gasto</div>
-                <div class="card-value spent">R$ 342,50</div>
-            </div>
-            <div class="card">
-                <div class="card-title">Pedidos Feitos</div>
-                <div class="card-value orders">12</div>
+        
+        <div class="header-panel">
+            <div>
+                <h1>Resumo</h1>
+                <div style="color: #6b7280; font-size: 13px; margin-top: 4px;">Domingo, 19 de jul.</div>
             </div>
         </div>
 
-        <!-- Seção do Formulário -->
-        <div class="panel-section">
-            <h2>Criar Novo Pedido</h2>
-            <form id="smmForm">
-                <div class="form-group">
-                    <label>ID do Serviço:</label>
-                    <input type="number" id="servico_id" required placeholder="Ex: 101">
-                </div>
-                <div class="form-group">
-                    <label>Link do Perfil/Post:</label>
-                    <input type="url" id="link_rede_social" required placeholder="https://instagram.com...">
-                </div>
-                <div class="form-group">
-                    <label>Quantidade:</label>
-                    <input type="number" id="quantidade" required placeholder="Ex: 1000">
-                </div>
-                <button type="submit">Enviar Pedido</button>
-            </form>
+        <!-- Grade de Ações Rápidas (Estilo Atalhos do seu Print) -->
+        <div class="shortcuts-grid">
+            <div class="shortcut-btn btn-purple">
+                <span>✈️</span>
+                <div class="shortcut-title">Criar Novo<br>Pedido Rápido</div>
+            </div>
+            <div class="shortcut-btn btn-orange">
+                <span>📸</span>
+                <div class="shortcut-title">Serviços do<br>Instagram</div>
+            </div>
+            <div class="shortcut-btn btn-pink">
+                <span>📋</span>
+                <div class="shortcut-title">Ver Histórico<br>de Pedidos</div>
+            </div>
+            <div class="shortcut-btn btn-green">
+                <span>📥</span>
+                <div class="shortcut-title">Baixar Mídias<br>Sociais</div>
+            </div>
         </div>
+
+        <!-- Grade de Estatísticas e Anéis (Estilo Fitness) -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-header">Círculo de Atividade</div>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <div style="width: 80px; height: 80px; border: 8px solid #ff2d55; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px;">➔</div>
+                    <div>
+                        <div style="font-size: 12px; color: #9ca3af; font-weight: 600;">Movimento</div>
+                        <div class="metric-value txt-pink">21/300 CAL</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">Sessões Recentes</div>
+                <div class="metric-value txt-purple">00:24:15</div>
+                <div style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Média Total: 1 sessão por dia</div>
+            </div>
+
+            <div class="metric-card">
+                <div class="metric-header">Distância Percorrida</div>
+                <div class="metric-value txt-blue">0,48 KM</div>
+                <div style="font-size: 12px; color: #9ca3af; margin-top: 5px;">Hoje</div>
+            </div>
+        </div>
+
+        <!-- Barra de Status Comercial Inferior -->
+        <div class="status-bar-footer">
+            <div class="status-item"><span style="color: #34c759;">💰</span> Saldo: R$ 152,40</div>
+            <div class="status-item"><span style="color: #007aff;">📦</span> Pedidos: 128</div>
+            <div class="status-item"><span style="color: #af52de;">⚡</span> Serviços: 34</div>
+            <div class="status-item"><span style="color: #ff9500;">👥</span> Usuários: 562</div>
+            <div class="status-item"><span style="color: #34c759;">🟢</span> API Status: Online</div>
+        </div>
+
     </div>
 
-    <script>
-        document.getElementById('smmForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const dados = {
-                servico_id: parseInt(document.getElementById('servico_id').value),
-                link_rede_social: document.getElementById('link_rede_social').value,
-                quantidade: parseInt(document.getElementById('quantidade').value)
-            };
-            try {
-                const resposta = await fetch('http://127.0.0', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(dados)
-                });
-                const resultado = await resposta.json();
-                if (resposta.ok) {
-                    alert('✅ Sucesso! ' + resultado.mensagem);
-                } else {
-                    alert('❌ Erro na validação dos dados.');
-                }
-            } catch (erro) {
-                alert('❌ Erro: Ligue o FastAPI no seu computador (fastapi dev main.py)!');
-            }
-        });
-    </script>
 </body>
 </html>
