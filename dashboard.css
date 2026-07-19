@@ -1,151 +1,178 @@
 /* dashboard.css */
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background-color: #000000;
+    background-color: #0d111d; /* Azul-escuro profundo igual à imagem */
     color: #ffffff;
     margin: 0;
     display: flex;
     height: 100vh;
 }
 
-/* Menu Lateral */
+/* Menu Lateral Esquerdo */
 .sidebar {
-    width: 240px;
-    background-color: #121212;
+    width: 250px;
+    background-color: #161b26; /* Cinza azulado escuro */
     padding: 24px;
     box-sizing: border-box;
-    border-right: 1px solid #1c1c1e;
-    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    border-right: 1px solid #212936;
 }
 
-.sidebar h2 {
-    font-size: 22px;
+.logo-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 20px;
     font-weight: 700;
-    margin-bottom: 35px;
     color: #ffffff;
-    margin-top: 0;
+    margin-bottom: 30px;
+}
+
+.menu-group-title {
+    font-size: 11px;
+    color: #4b5563;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin: 15px 0 8px 10px;
+    font-weight: 700;
 }
 
 .sidebar a {
-    display: block;
-    color: #8e8e93;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #9ca3af;
     text-decoration: none;
-    padding: 14px;
-    border-radius: 10px;
-    margin-bottom: 8px;
+    padding: 12px;
+    border-radius: 8px;
     font-weight: 600;
-    font-size: 15px;
+    font-size: 14px;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .sidebar a.active {
-    background-color: #1c1c1e;
-    color: #30d158; /* Verde Neon */
+    background-color: #212936;
+    color: #6366f1; /* Roxo/azul destaque */
+}
+
+.sidebar a:hover:not(.active) {
+    background-color: #1f293d;
+    color: #ffffff;
+}
+
+.user-profile-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding-top: 15px;
+    border-top: 1px solid #212936;
 }
 
 /* Área de Conteúdo Principal */
 .main-content {
     flex: 1;
-    padding: 40px;
+    padding: 30px;
     overflow-y: auto;
     box-sizing: border-box;
-    background-color: #000000;
 }
 
-h1 {
-    font-size: 32px;
-    font-weight: 700;
-    margin-top: 0;
-    margin-bottom: 30px;
-    color: #ffffff;
-}
-
-/* Cartões do Topo */
-.cards-grid {
+/* Topo do Painel */
+.header-panel {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.header-panel h1 {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 700;
+}
+
+/* GRADE DE BOTÕES (Estilo App Atalhos) */
+.shortcuts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 16px;
-    margin-bottom: 35px;
-    flex-wrap: wrap;
+    margin-bottom: 30px;
 }
 
-.card {
-    background-color: #1c1c1e;
+.shortcut-btn {
     padding: 20px;
-    border-radius: 14px;
-    flex: 1;
-    min-width: 220px;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px;
     box-sizing: border-box;
-}
-
-.card-title {
-    font-size: 14px;
-    color: #8e8e93;
-    font-weight: 600;
-    margin-bottom: 12px;
-}
-
-.card-value {
-    font-size: 28px;
     font-weight: 700;
-}
-
-/* Cores dos Valores */
-.card-value.balance { color: #30d158; } /* Verde neon */
-.card-value.spent { color: #ff2d55; }   /* Rosa neon */
-.card-value.orders { color: #0a84ff; }  /* Azul neon */
-
-/* Bloco do Formulário */
-.panel-section {
-    background-color: #1c1c1e;
-    padding: 30px;
-    border-radius: 14px;
-    max-width: 500px;
-    box-sizing: border-box;
-}
-
-.panel-section h2 {
-    font-size: 18px;
-    margin-top: 0;
-    margin-bottom: 20px;
-    color: #ffffff;
-}
-
-.form-group {
-    margin-bottom: 20px;
-}
-
-label {
-    display: block;
-    font-size: 13px;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #aeaea2;
-    text-transform: uppercase;
-}
-
-input {
-    width: 100%;
-    padding: 12px;
-    background-color: #2c2c2e;
-    border: 1px solid transparent;
-    border-radius: 10px;
-    color: #ffffff;
-    box-sizing: border-box;
     font-size: 15px;
-}
-
-input:focus {
-    outline: none;
-    border-color: #30d158;
-}
-
-button {
-    width: 100%;
-    background-color: #30d158;
-    color: #000000;
-    padding: 14px;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 700;
     cursor: pointer;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Cores vibrantes idênticas aos blocos da imagem */
+.btn-purple { background-color: #5856d6; color: #ffffff; }
+.btn-orange { background-color: #ff9500; color: #ffffff; }
+.btn-pink   { background-color: #ff2d55; color: #ffffff; }
+.btn-green  { background-color: #34c759; color: #ffffff; }
+
+.shortcut-title {
+    font-size: 14px;
+    margin-top: 10px;
+}
+
+/* GRADE DE METRICAS (Estilo Fitness/Resumo) */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    background-color: #161b26;
+    border: 1px solid #212936;
+    border-radius: 16px;
+    padding: 24px;
+    box-sizing: border-box;
+}
+
+.metric-header {
+    font-size: 14px;
+    color: #9ca3af;
+    font-weight: 600;
+    margin-bottom: 15px;
+}
+
+.metric-value {
+    font-size: 32px;
+    font-weight: 800;
+}
+
+/* Cores neon de texto para os números */
+.txt-pink { color: #ff2d55; }
+.txt-purple { color: #af52de; }
+.txt-blue { color: #007aff; }
+
+/* Barra de Status do Rodapé */
+.status-bar-footer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    background-color: #161b26;
+    padding: 16px;
+    border-radius: 12px;
+    border: 1px solid #212936;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 600;
 }
