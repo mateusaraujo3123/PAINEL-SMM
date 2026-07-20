@@ -5,3 +5,4 @@ aiosqlite
 passlib[bcrypt]
 python-jose[cryptography]
 httpx
+jinja2
