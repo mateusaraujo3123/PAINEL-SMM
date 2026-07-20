@@ -2,7 +2,9 @@ fastapi
 uvicorn
 sqlalchemy
 aiosqlite
-passlib[bcrypt]
-python-jose[cryptography]
+passlib
+bcrypt
+python-jose
+cryptography
 httpx
 jinja2
