@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import HTMLResponse
+from backend.app.routers import auth, pedidos  # Atualizado aqui
 from backend.app.database import engine, Base
 from backend.app.routers import auth  # Puxa o seu sistema de login feito na pasta interna
 
