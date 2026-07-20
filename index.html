@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Entrar</title>
-    <!-- Ajuste do link CSS para Jinja2 carregar na raiz -->
+    <!-- Injeta o CSS comercial da raiz usando Jinja2Templates -->
     <link rel="stylesheet" href="{{ url_for('static', path='login.css') }}">
 </head>
 <body>
@@ -13,16 +13,16 @@
         <div class="logo-login">📈 Painel SMM</div>
         <div class="subtitle-login" id="formSubtitle">Entre na sua conta para gerenciar seus pedidos</div>
 
-        <!-- FORMULÁRIO DE LOGIN REAL -->
+        <!-- FORMULÁRIO DE LOGIN COM VALIDATORS PARA FASTAPI -->
         <form id="loginForm">
             <div class="form-group">
-                <label>Usuário (E-mail)</label>
-                <!-- Atributo name="username" adicionado para casar com o FastAPI -->
+                <label>E-mail</label>
+                <!-- Atributo 'name="username"' é obrigatório para o Form(...) do FastAPI -->
                 <input type="email" name="username" id="login_email" required placeholder="seu@email.com">
             </div>
             <div class="form-group">
                 <label>Senha</label>
-                <!-- Atributo name="password" adicionado para casar com o FastAPI -->
+                <!-- Atributo 'name="password"' é obrigatório para o Form(...) do FastAPI -->
                 <input type="password" name="password" id="login_senha" required placeholder="••••••••">
             </div>
             <button type="submit" class="btn-login">Acessar Painel</button>
@@ -31,14 +31,14 @@
             </div>
         </form>
 
-        <!-- FORMULÁRIO DE CADASTRO REAL -->
+        <!-- FORMULÁRIO DE CADASTRO COM VALIDATORS PARA FASTAPI (Oculto por padrão via JS) -->
         <form id="cadastroForm" style="display: none;">
             <div class="form-group">
                 <label>Nome Completo</label>
                 <input type="text" id="cad_nome" placeholder="Seu Nome">
             </div>
             <div class="form-group">
-                <label>Usuário (E-mail)</label>
+                <label>E-mail</label>
                 <input type="email" name="username" id="cad_email" required placeholder="seu@email.com">
             </div>
             <div class="form-group">
@@ -73,7 +73,7 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // ENVIO REAL DO CADASTRO VIA FETCH ASSÍNCRONO
+        // PROCESSAMENTO DE CADASTRO COM TRAVA COMERCIAL
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(cadastroForm);
@@ -83,23 +83,25 @@
                     method: "POST",
                     body: formData
                 });
-                const resultado = await response.json();
 
-                if (response.ok) {
-                    alert('✅ Conta criada com sucesso! Faça login para acessar.');
-                    cadastroForm.style.display = 'none';
-                    loginForm.style.display = 'block';
-                    formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
-                } else {
-                    alert("Erro no cadastro: " + (resultado.detail || "Falha ao registrar."));
+                if (!response.ok) {
+                    const erroData = await response.json();
+                    throw new Error(erroData.detail || "Falha ao registrar conta no servidor.");
                 }
+
+                const resultado = await response.json();
+                alert('✅ Conta criada com sucesso! Faça login para acessar.');
+                cadastroForm.style.display = 'none';
+                loginForm.style.display = 'block';
+                formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
+
             } catch (error) {
-                console.error("Erro:", error);
-                alert("Erro ao conectar com o servidor.");
+                console.error("Erro de Autenticação:", error);
+                alert("❌ Erro de Sistema: Não foi possível cadastrar. O servidor backend está offline ou inacessível.");
             }
         });
 
-        // ENVIO REAL DO LOGIN VIA FETCH ASSÍNCRONO
+        // PROCESSAMENTO DE LOGIN COM REDIRECIONAMENTO CONTROLADO APENAS POR STATUS 200
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(loginForm);
@@ -109,17 +111,19 @@
                     method: "POST",
                     body: formData
                 });
-                const resultado = await response.json();
 
-                if (response.ok) {
-                    // O backend configurou o Cookie HTTP-Only. Redireciona via rota controlada.
-                    window.location.href = resultado.redirecionar; 
-                } else {
-                    alert("Erro no login: " + (resultado.detail || "Credenciais inválidas."));
+                if (!response.ok) {
+                    const erroData = await response.json();
+                    throw new Error(erroData.detail || "Credenciais incorretas ou inválidas.");
                 }
+
+                // Só executa o redirecionamento se o FastAPI responder com sucesso absoluto
+                const resultado = await response.json();
+                window.location.href = resultado.redirecionar; 
+
             } catch (error) {
-                console.error("Erro:", error);
-                alert("Erro ao conectar com o servidor.");
+                console.error("Erro de Autenticação:", error);
+                alert("❌ Acesso Negado: Usuário/Senha inválidos ou o servidor de segurança está fora do ar.");
             }
         });
     </script>
