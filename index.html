@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Entrar</title>
-    <!-- Injeta o CSS comercial da raiz usando Jinja2Templates -->
+    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
     <link rel="stylesheet" href="login.css">
 </head>
 <body>
@@ -73,13 +73,13 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // PROCESSAMENTO DE CADASTRO COM TRAVA COMERCIAL
+        // PROCESSAMENTO DE CADASTRO ASSÍNCRONO COM ROTA RELATIVA CORRIGIDA
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(cadastroForm);
 
             try {
-                const response = await fetch("/auth/cadastro", {
+                const response = await fetch("./auth/cadastro", {
                     method: "POST",
                     body: formData
                 });
@@ -101,13 +101,13 @@
             }
         });
 
-        // PROCESSAMENTO DE LOGIN COM REDIRECIONAMENTO CONTROLADO APENAS POR STATUS 200
+        // PROCESSAMENTO DE LOGIN ASSÍNCRONO COM REDIRECIONAMENTO CONTROLADO
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const formData = new FormData(loginForm);
 
             try {
-                const response = await fetch("/auth/login", {
+                const response = await fetch("./auth/login", {
                     method: "POST",
                     body: formData
                 });
@@ -117,7 +117,7 @@
                     throw new Error(erroData.detail || "Credenciais incorretas ou inválidas.");
                 }
 
-                // Só executa o redirecionamento se o FastAPI responder com sucesso absoluto
+                // O redirecionamento só acontece se o FastAPI responder com status 200 (Sucesso)
                 const resultado = await response.json();
                 window.location.href = resultado.redirecionar; 
 
