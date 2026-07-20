@@ -1,3 +1,4 @@
+import os
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -24,14 +25,16 @@ async def startup():
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
-app.mount("/static", StaticFiles(directory="."), name="static")
-templates = Jinja2Templates(directory=".")
+# RESOLUÇÃO DO LINK QUEBRADO: Força o Python a ler o caminho real absoluto da raiz
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# --- ROTAS JINJA2 CORRIGIDAS SEM O CONFLITO DE DICIONÁRIO ---
+app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+templates = Jinja2Templates(directory=BASE_DIR)
+
+# --- ROTAS JINJA2 ---
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # Sintaxe universal: o objeto request vai solto como primeiro parâmetro
     return templates.TemplateResponse(request, "index.html")
 
 @app.get("/dashboard", response_class=HTMLResponse)
