@@ -53,12 +53,12 @@ async def obter_usuario_logado(request: Request, db: AsyncSession = Depends(get_
     if not token_cookie or not token_cookie.startswith("Bearer "):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Acesso não autorizado. Faça login.")
         
-    # CORREÇÃO DA EXTRAÇÃO: Pega exatamente a segunda parte da string (o token puro)
+    # Extrai a string pura do token após o espaço "Bearer "
     partes_token = token_cookie.split(" ")
     if len(partes_token) != 2:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Formato de token inválido.")
     
-    token_puro = partes_token[1]
+    token_puro = partes_token[1] # <--- Certifique-se de que está com o [1] aqui
     
     try:
         # Decodifica a string pura do token assinado por HS256 com a lista correta de algoritmos
