@@ -25,24 +25,25 @@ async def startup():
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
-# RESOLUÇÃO DO LINK QUEBRADO: Força o Python a ler o caminho real absoluto da raiz
+# Pega o caminho absoluto da sua raiz onde estão os arquivos soltos
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-app.mount("/static", StaticFiles(directory=BASE_DIR), name="static")
+# Monta a própria raiz como servidora de arquivos diretamente
+app.mount("/", StaticFiles(directory=BASE_DIR, html=True), name="raiz")
 templates = Jinja2Templates(directory=BASE_DIR)
 
-# --- ROTAS JINJA2 ---
+# --- ROTAS JINJA2 CORRIGIDAS ---
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(request, "index.html")
+    return templates.TemplateResponse(name="index.html", context={"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     try:
         from backend.app.routers.auth import obter_usuario_logado
         usuario_ativo = await obter_usuario_logado(request)
-        return templates.TemplateResponse(request, "dashboard.html", {"usuario": usuario_ativo})
+        return templates.TemplateResponse(name="dashboard.html", context={"request": request, "usuario": usuario_ativo})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -51,7 +52,7 @@ async def novo_pedido_page(request: Request):
     try:
         from backend.app.routers.auth import obter_usuario_logado
         usuario_ativo = await obter_usuario_logado(request)
-        return templates.TemplateResponse(request, "novo-pedido.html", {"usuario": usuario_ativo})
+        return templates.TemplateResponse(name="novo-pedido.html", context={"request": request, "usuario": usuario_ativo})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -60,7 +61,7 @@ async def servicos_page(request: Request):
     try:
         from backend.app.routers.auth import obter_usuario_logado
         usuario_ativo = await obter_usuario_logado(request)
-        return templates.TemplateResponse(request, "lista-servicos.html", {"usuario": usuario_ativo})
+        return templates.TemplateResponse(name="lista-servicos.html", context={"request": request, "usuario": usuario_ativo})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -69,6 +70,6 @@ async def historico_page(request: Request):
     try:
         from backend.app.routers.auth import obter_usuario_logado
         usuario_ativo = await obter_usuario_logado(request)
-        return templates.TemplateResponse(request, "historico-pedidos.html", {"usuario": usuario_ativo})
+        return templates.TemplateResponse(name="historico-pedidos.html", context={"request": request, "usuario": usuario_ativo})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
