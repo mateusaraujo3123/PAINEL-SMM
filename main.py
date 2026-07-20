@@ -1,8 +1,8 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from backend.app.database import engine, Base
 from backend.app.routers import auth, pedidos  # Importa os dois módulos lógicos do backend
 
@@ -31,24 +31,50 @@ app.include_router(pedidos.router)  # Ativa a rota /api/pedidos/criar
 app.mount("/static", StaticFiles(directory="."), name="static")
 templates = Jinja2Templates(directory=".")
 
-# --- ROTAS JINJA2 QUE SERVEM OS SEUS ARQUIVOS HTML ---
+# --- ROTAS JINJA2 QUE SERVEM OS SEUS ARQUIVOS HTML COM TRAVA DE SEGURANÇA ---
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
+    """Página pública de Login e Cadastro."""
     return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    """Painel principal protegido por sessão."""
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario_ativo = await obter_usuario_logado(request)
+        # Passa os dados do usuário para o HTML (exibir nome/saldo premium na tela via Jinja2)
+        return templates.TemplateResponse("dashboard.html", {"request": request, "usuario": usuario_ativo})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
 @app.get("/novo-pedido", response_class=HTMLResponse)
 async def novo_pedido_page(request: Request):
-    return templates.TemplateResponse("novo-pedido.html", {"request": request})
+    """Formulário de pedidos protegido por sessão."""
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario_ativo = await obter_usuario_logado(request)
+        return templates.TemplateResponse("novo-pedido.html", {"request": request, "usuario": usuario_ativo})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
 @app.get("/servicos", response_class=HTMLResponse)
 async def servicos_page(request: Request):
-    return templates.TemplateResponse("lista-servicos.html", {"request": request})
+    """Tabela comercial de serviços protegida por sessão."""
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario_ativo = await obter_usuario_logado(request)
+        return templates.TemplateResponse("lista-servicos.html", {"request": request, "usuario": usuario_ativo})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
 @app.get("/historico", response_class=HTMLResponse)
 async def historico_page(request: Request):
-    return templates.TemplateResponse("historico-pedidos.html", {"request": request})
+    """Logs de pedidos protegidos por sessão."""
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario_ativo = await obter_usuario_logado(request)
+        return templates.TemplateResponse("historico-pedidos.html", {"request": request, "usuario": usuario_ativo})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
