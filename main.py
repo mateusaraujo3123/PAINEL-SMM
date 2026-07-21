@@ -22,30 +22,45 @@ async def startup_event():
         await conn.run_sync(Base.metadata.create_all)
     print("🚀 Banco de dados SMM operacional e estável na nuvem!")
 
-# 1. Rotas da API ganham prioridade máxima de processamento
+# 1. Rotas da API ganham prioridade máxima absoluta de processamento
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
-# 2. Rota dinâmica e segura para os arquivos estáticos (.css e .js) soltos na raiz
-@app.get("/{arquivo_estatico}")
-async def servir_arquivos_raiz(arquivo_estatico: str):
-    # TRAVA DE SEGURANÇA: Se a rota for interna da API, não tenta ler como arquivo estático
-    if arquivo_estatico.startswith("auth") or arquivo_estatico.startswith("api"):
-        raise HTTPException(status_code=404, detail="Rota interna da API")
+# 2. ROTAS ESTÁTICAS INDIVIDUAIS: Mapeamento explícito para eliminar o conflito de rotas da API
+@app.get("/login.css")
+async def servir_login_css():
+    return FileResponse("login.css", media_type="text/css")
 
-    arquivos_validos = [
-        "login.css", "login.js", "style.css",
-        "dashboard.css", "novo-pedido.css", 
-        "lista-servicos.css", "historico-pedidos.css"
-    ]
-    
-    if arquivo_estatico in arquivos_validos and os.path.exists(arquivo_estatico):
-        media_type = "text/css" if arquivo_estatico.endswith(".css") else "application/javascript"
-        return FileResponse(arquivo_estatico, media_type=media_type)
-    
-    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+@app.get("/dashboard.css")
+async def servir_dashboard_css():
+    return FileResponse("dashboard.css", media_type="text/css")
 
-# 3. ROTAS VISUAIS DE ALTA PERFORMANCE (Protegidas por Cookie HTTP-Only)
+@app.get("/novo-pedido.css")
+async def servir_novo_pedido_css():
+    return FileResponse("novo-pedido.css", media_type="text/css")
+
+@app.get("/lista-servicos.css")
+async def servir_lista_servicos_css():
+    return FileResponse("lista-servicos.css", media_type="text/css")
+
+@app.get("/historico-pedidos.css")
+async def servir_historico_pedidos_css():
+    return FileResponse("historico-pedidos.css", media_type="text/css")
+
+@app.get("/style.css")
+async def servir_style_css():
+    if os.path.exists("style.css"):
+        return FileResponse("style.css", media_type="text/css")
+    raise HTTPException(status_code=404, detail="Style não encontrado")
+
+@app.get("/login.js")
+async def servir_login_js():
+    if os.path.exists("login.js"):
+        return FileResponse("login.js", media_type="application/javascript")
+    raise HTTPException(status_code=404, detail="Script não encontrado")
+
+
+# 3. ROTAS VISUAIS DE ATENDIMENTO (Protegidas por Cookie HTTP-Only)
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
