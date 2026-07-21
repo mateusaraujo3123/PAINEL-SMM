@@ -18,10 +18,13 @@ from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES (Sintaxe Oficial Starlette)
+# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES (Protegido para Produção/Railway)
 app.add_middleware(
     SessionMiddleware, 
-    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM"
+    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
+    session_cookie="smm_admin_session",
+    same_site="lax",   # Permite o redirecionamento estável na nuvem
+    secure=True        # Força o uso exclusivo via HTTPS em produção
 )
 
 templates = Jinja2Templates(directory=".")
@@ -40,6 +43,7 @@ class AdminAuth(AuthenticationBackend):
         password = form.get("password")
 
         if username == ADMIN_USER and password == ADMIN_PASS:
+            # Escreve o identificador único na sessão criptografada da Starlette
             request.session.update({"token": "sessao_admin_valida_smm"})
             return True
         return False
