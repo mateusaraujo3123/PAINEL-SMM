@@ -18,13 +18,10 @@ from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDO PARA HTTPS (Resolve o loop de login na Railway)
+# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDO (Sintaxe Oficial Starlette)
 app.add_middleware(
     SessionMiddleware, 
-    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
-    session_cookie="admin_session",
-    secure=True,       # Força o cookie a rodar via HTTPS seguro da Railway
-    same_site="lax"    # Permite navegação limpa sem bloqueios de segurança do navegador
+    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM"
 )
 
 templates = Jinja2Templates(directory=".")
