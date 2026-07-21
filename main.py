@@ -8,6 +8,7 @@ from fastapi.templating import Jinja2Templates
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
+from starlette.middleware.sessions import SessionMiddleware
 
 # Importações do banco e dos modelos
 from backend.app.database import engine, get_db
@@ -16,13 +17,17 @@ from backend.app.routers import auth, pedidos
 from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
+
+# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES EXIGIDO PELO SQLADMIN (Proteção contra o Erro)
+app.add_middleware(SessionMiddleware, secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM")
+
 templates = Jinja2Templates(directory=".")
 
 # ========================================================
 # 🔒 TRAVA DE SEGURANÇA EXCLUSIVA DO SEU PAINEL ADMIN
 # ========================================================
-ADMIN_USER = "admin@painelsmm.com"  # 🔴 Mude para o seu e-mail de acesso master
-ADMIN_PASS = "SuaSenhaSuperSegura123"  # 🔴 Mude para a sua senha secreta master
+ADMIN_USER = "leivisonmateus2021@gmail.com"  # 🔴 Mude para o seu e-mail de acesso master
+ADMIN_PASS = "mathiasriquelme"  # 🔴 Mude para a sua senha secreta master
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
@@ -30,7 +35,6 @@ class AdminAuth(AuthenticationBackend):
         username = form.get("username")
         password = form.get("password")
 
-        # Valida se os dados batem exatamente com as suas credenciais master
         if username == ADMIN_USER and password == ADMIN_PASS:
             request.session.update({"token": "sessao_admin_valida_smm"})
             return True
@@ -46,7 +50,6 @@ class AdminAuth(AuthenticationBackend):
             return True
         return False
 
-# Ativa o backend de autenticação passando uma chave secreta para assinar a sessão do Admin
 provedor_autenticacao = AdminAuth(secret_key="CHAVE_SECRETA_ISOLADA_DO_ADMIN_SMM")
 admin = Admin(app, engine, title="Painel Admin SMM", base_url="/admin", authentication_backend=provedor_autenticacao)
 
@@ -61,7 +64,6 @@ class UsuarioAdmin(ModelView, model=Usuario):
     name = "Usuário"
     plural_name = "Usuários"
     
-    # Intercepta alterações para criptografar senhas editadas pelo painel
     async def on_model_change(self, data, model, is_created, request):
         if "password_hash" in data and data["password_hash"]:
             if not data["password_hash"].startswith("$2b$"):
