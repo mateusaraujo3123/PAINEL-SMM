@@ -71,37 +71,41 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // PROCESSAMENTO DE CADASTRO (Envio em Form-Urlencoded para FastAPI)
+        // PROCESSAMENTO DE CADASTRO (Envio em JSON Limpo para FastAPI)
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('cad_email').value;
             const senha = document.getElementById('cad_senha').value;
 
-            // Formatação correta em x-www-form-urlencoded exigida pelo seu backend
-            const dadosFormulario = new URLSearchParams();
-            dadosFormulario.append('username', email);
-            dadosFormulario.append('password', senha);
-
             try {
                 const response = await fetch("/auth/cadastro", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
                     },
-                    body: dadosFormulario.toString()
+                    body: JSON.stringify({
+                        username: email,
+                        password: senha
+                    })
                 });
 
-                const resultado = await response.json();
-
+                // Se o servidor responder com erro do Python, captura o texto em vez de quebrar o JSON
                 if (!response.ok) {
-                    if (Array.isArray(resultado.detail)) {
-                        const mensagensErro = resultado.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n');
-                        throw new Error(mensagensErro);
+                    const textoErro = await response.text();
+                    try {
+                        const jsonErro = JSON.parse(textoErro);
+                        if (Array.isArray(jsonErro.detail)) {
+                            throw new Error(jsonErro.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n'));
+                        }
+                        throw new Error(jsonErro.detail || "Erro desconhecido no servidor.");
+                    } catch(e) {
+                        throw new Error(`O servidor retornou uma resposta inválida (Erro 500 Backend). Verifique os logs da Railway.`);
                     }
-                    throw new Error(resultado.detail || "Falha ao registrar conta no servidor.");
                 }
 
+                const resultado = await response.json();
                 alert('✅ Conta criada com sucesso! Faça login para acessar.');
                 cadastroForm.style.display = 'none';
                 loginForm.style.display = 'block';
@@ -114,38 +118,37 @@
             }
         });
 
-        // PROCESSAMENTO DE LOGIN (Envio em Form-Urlencoded para FastAPI)
+        // PROCESSAMENTO DE LOGIN (Envio em JSON Limpo para FastAPI)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('login_email').value;
             const senha = document.getElementById('login_senha').value;
 
-            // Formatação correta em x-www-form-urlencoded exigida pelo seu backend
-            const dadosFormulario = new URLSearchParams();
-            dadosFormulario.append('username', email);
-            dadosFormulario.append('password', senha);
-
             try {
                 const response = await fetch("/auth/login", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/x-www-form-urlencoded"
+                        "Content-Type": "application/json",
+                        "Accept": "application/json"
                     },
-                    body: dadosFormulario.toString()
+                    body: JSON.stringify({
+                        username: email,
+                        password: senha
+                    })
                 });
 
-                const resultado = await response.json();
-
                 if (!response.ok) {
-                    if (Array.isArray(resultado.detail)) {
-                        const mensagensErro = resultado.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n');
-                        throw new Error(mensagensErro);
+                    const textoErro = await response.text();
+                    try {
+                        const jsonErro = JSON.parse(textoErro);
+                        throw new Error(jsonErro.detail || "Credenciais incorretas.");
+                    } catch(e) {
+                        throw new Error(`Erro interno no servidor ao tentar fazer login. Verifique os logs.`);
                     }
-                    throw new Error(resultado.detail || "Credenciais incorretas ou inválidas.");
                 }
 
-                // Armazena e redireciona de acordo com o retorno do backend
+                const resultado = await response.json();
                 window.location.href = resultado.redirecionar || "/dashboard"; 
 
             } catch (error) {
