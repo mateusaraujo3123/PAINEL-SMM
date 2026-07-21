@@ -1,7 +1,8 @@
+# backend/app/routers/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Form, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from passlib.context import CryptContext
+import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta, timezone
 from backend.app.database import get_db
@@ -9,12 +10,21 @@ from backend.app.models.models import Usuario
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
-# Configuração da criptografia de senha segura com Bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # Chave e algoritmo para a assinatura do Token JWT comercial
 SECRET_KEY = "SUA_CHAVE_SECRETA_SUPER_PROTEGIDA"  # Altere ao colocar em produção
 ALGORITHM = "HS256"
+
+# Funções nativas e robustas usando bcrypt puro (compatível com Python 3.13+)
+def gerar_senha_hash(senha: str) -> str:
+    salt = bcrypt.gensalt()
+    hash_bytes = bcrypt.hashpw(senha.encode('utf-8'), salt)
+    return hash_bytes.decode('utf-8')
+
+def verificar_senha(senha: str, hash_gravado: str) -> bool:
+    try:
+        return bcrypt.checkpw(senha.encode('utf-8'), hash_gravado.encode('utf-8'))
+    except Exception:
+        return False
 
 @router.post("/cadastro")
 async def cadastrar_usuario(username: str = Form(...), password: str = Form(...), db: AsyncSession = Depends(get_db)):
@@ -23,8 +33,10 @@ async def cadastrar_usuario(username: str = Form(...), password: str = Form(...)
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Este nome de usuário já está cadastrado.")
     
-    # Cria o novo usuário com a senha criptografada e saldo da carteira zerado
-    novo_user = Usuario(username=username, password_hash=pwd_context.hash(password))
+    # Cria o novo usuário com o hash nativo compatível com Python 3.13
+    senha_criptografada = gerar_senha_hash(password)
+    novo_user = Usuario(username=username, password_hash=senha_criptografada)
+    
     db.add(novo_user)
     await db.commit()
     return {"status": "sucesso", "mensagem": "Sua conta foi criada com sucesso!"}
@@ -35,7 +47,7 @@ async def login_usuario(response: Response, username: str = Form(...), password:
     result = await db.execute(select(Usuario).where(Usuario.username == username))
     user = result.scalars().first()
     
-    if not user or not pwd_context.verify(password, user.password_hash):
+    if not user or not verificar_senha(password, user.password_hash):
         raise HTTPException(status_code=401, detail="Usuário ou senha incorretos.")
     
     # Define o tempo de expiração do login (12 horas padrão comercial)
@@ -58,10 +70,10 @@ async def obter_usuario_logado(request: Request, db: AsyncSession = Depends(get_
     if len(partes_token) != 2:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Formato de token inválido.")
     
-    token_puro = partes_token[1] # <--- Certifique-se de que está com o [1] aqui
+    token_puro = partes_token[1]
     
     try:
-        # Decodifica a string pura do token assinado por HS256 com a lista correta de algoritmos
+        # Decodifica a string pura do token assinado por HS256
         payload = jwt.decode(token_puro, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
