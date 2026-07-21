@@ -281,13 +281,17 @@
             <div class="status-item">Velocidade Média de Envio: <span style="color: #0a84ff;">Instântanea</span></div>
             <div class="status-item">Atualizado em tempo real</div>
         </div>
-    </div>
+    </div> <!-- Fecha a div .main-content -->
 
     <!-- Script de Navegação Lateral -->
     <script>
-     const toggleMenu = document.getElementById('toggleMenu');
-     const sidebarMenu = document.getElementById('sidebarMenu');
+        const toggleMenu = document.getElementById('toggleMenu');
+        const sidebarMenu = document.getElementById('sidebarMenu');
 
-toggleMenu.addEventListener('click', () => {
-    sidebarMenu.classList.toggle('collapsed');
-});
+        toggleMenu.addEventListener('click', () => {
+            sidebarMenu.classList.toggle('collapsed');
+        });
+    </script>
+</body>
+</html>
+
