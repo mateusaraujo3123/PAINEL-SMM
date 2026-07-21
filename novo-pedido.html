@@ -5,36 +5,43 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Novo Pedido</title>
-    <!-- 🔴 CSS SEPARADO EM SEU PRÓPRIO CANTO -->
-    <link rel="stylesheet" href="novo-pedido.css">
+    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
+    <link rel="stylesheet" href="/novo-pedido.css">
 </head>
 <body>
 
     <!-- Menu Lateral -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebarMenu">
         <div>
             <div class="logo-section">
                 <span>📈</span> Painel SMM
             </div>
             
-            <a href="dashboard.html">🏠 Resumo</a>
+            <a href="/dashboard">🏠 Resumo</a>
             
             <div class="menu-group-title">Serviços</div>
-            <a href="novo-pedido.html" class="active">🛒 Novo Pedido</a>
-            <a href="#">⚡ Lista de Serviços</a>
-            <a href="#">📜 Histórico de Pedidos</a>
-            <a href="adicionar-saldo.html">💳 Adicionar Saldo</a>
+            <a href="/novo-pedido" class="active">🛒 Novo Pedido</a>
+            <a href="/lista-servicos">⚡ Lista de Serviços</a>
+            <a href="/historico-pedidos">📜 Histórico de Pedidos</a>
+            <a href="/adicionar-saldo">💳 Adicionar Saldo</a>
             
             <div class="menu-group-title">Configurações</div>
-            <a href="#">👤 Meu Perfil</a>
-            <a href="#">🔌 Integração API</a>
+            <a href="/meu-perfil">👤 Meu Perfil</a>
+            <a href="/integracao-api">🔌 Integração API</a>
         </div>
 
+        <!-- Perfil do Usuário Logado Dinâmico via Jinja2 -->
         <div class="user-profile-bar">
-            <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">M</div>
-            <div>
-                <div style="font-size: 14px; font-weight: 700;">Minha Conta</div>
-                <div style="font-size: 12px; color: #34c759;">● R$ 152,40</div>
+            <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase;">
+                {{ usuario.username[0] if usuario else "U" }}
+            </div>
+            <div style="overflow: hidden; text-overflow: ellipsis; max-width: 150px;">
+                <div style="font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                    {{ usuario.username.split('@')[0] if usuario else "Cliente" }}
+                </div>
+                <div style="font-size: 12px; color: #34c759; font-weight: bold;">
+                    R$ {{ "{:,.2f}".format(usuario.saldo).replace(",", "X").replace(".", ",").replace("X", ".") if usuario else "0,00" }}
+                </div>
             </div>
         </div>
     </div>
@@ -94,14 +101,17 @@
 
     <!-- JavaScript apenas para a inteligência da página -->
     <script>
+        // Controle de colapso do menu lateral
         document.getElementById('toggleMenu').addEventListener('click', () => {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.getElementById('sidebarMenu').classList.toggle('collapsed');
         });
 
         const inputQtd = document.getElementById('qtd');
         const selectServico = document.getElementById('servico');
         const displayPreco = document.getElementById('totalPrice');
+        const formPedido = document.getElementById('orderForm');
 
+        // Função nativa de cálculo automático do frontend
         function calcularPreco() {
             const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
             const precoPorMil = parseFloat(opcaoSelecionada.getAttribute('data-preco'));
@@ -113,6 +123,47 @@
 
         inputQtd.addEventListener('input', calcularPreco);
         selectServico.addEventListener('change', calcularPreco);
+
+        // DISPARO COMERCIAL DE PEDIDOS ASSÍNCRONO PARA O FASTAPI
+        formPedido.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const serviceId = parseInt(selectServico.value);
+            const targetLink = document.getElementById('link_url').value;
+            const quantityValue = parseInt(inputQtd.value);
+
+            try {
+                // Rota comercial configurada em Pydantic no seu pedidos.py
+                const response = await fetch("/api/pedidos/criar", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        service_id: serviceId,
+                        link: targetLink,
+                        quantity: quantityValue
+                    })
+                });
+
+                const resultado = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(resultado.detail || "Falha ao processar o seu pedido.");
+                }
+
+                alert(`✅ Pedido Realizado!\nID da API Mãe: ${resultado.order_id || 'Processando'}\nSaldo Debitado com Sucesso.`);
+                formPedido.reset();
+                displayPreco.innerText = 'R$ 0,00';
+                
+                // Recarrega a página para atualizar o saldo visível do usuário logado
+                window.location.reload();
+
+            } catch (error) {
+                console.error("Erro ao enviar pedido comercial:", error);
+                alert(`❌ Erro no Envio:\n${error.message}`);
+            }
+        });
     </script>
 </body>
 </html>
