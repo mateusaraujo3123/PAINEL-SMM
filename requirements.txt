@@ -10,3 +10,5 @@ httpx
 jinja2
 python-multipart
 sqladmin
+itsdangerous
+authlib
