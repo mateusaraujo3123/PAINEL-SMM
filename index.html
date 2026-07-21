@@ -79,8 +79,8 @@
             const senha = document.getElementById('cad_senha').value;
 
             try {
-                // Rota limpa /cadastro (Ajuste caso o prefixo do seu router mude no main.py)
-                const response = await fetch("/cadastro", {
+                // Rota corrigida com o prefixo /auth do seu backend
+                const response = await fetch("/auth/cadastro", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
@@ -109,7 +109,7 @@
             }
         });
 
-        // PROCESSAMENTO DE LOGIN (Envio via JSON ou x-www-form-urlencoded)
+        // PROCESSAMENTO DE LOGIN (Envio via JSON coordenado com o backend)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -117,8 +117,8 @@
             const senha = document.getElementById('login_senha').value;
 
             try {
-                // Rota limpa /login (Sem pontos relativos)
-                const response = await fetch("/login", {
+                // Rota corrigida com o prefixo /auth do seu backend
+                const response = await fetch("/auth/login", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
