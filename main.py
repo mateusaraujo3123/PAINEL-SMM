@@ -33,40 +33,40 @@ async def servir_arquivos_raiz(arquivo_estatico: str):
     # Se não for um arquivo estático da lista, repassa para o FastAPI procurar outras rotas
     raise HTTPException(status_code=404, detail="Arquivo não encontrado")
 
-# 3. ROTAS VISUAIS DO PAINEL (Corrigidas usando o argumento explícito context=)
+# 3. ROTAS VISUAIS DO PAINEL (Sintaxe universal com request posicional)
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    # Resolvendo o erro 500 do Jinja usando context= de forma explícita
+    # Passando o request como primeiro parâmetro posicional obrigatoriamente
     return templates.TemplateResponse(
-        name="index.html", 
-        context={"request": request}
+        request,
+        name="index.html"
     )
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
     return templates.TemplateResponse(
-        name="dashboard.html", 
-        context={"request": request}
+        request,
+        name="dashboard.html"
     )
 
 @app.get("/novo-pedido", response_class=HTMLResponse)
 async def novo_pedido_page(request: Request):
     return templates.TemplateResponse(
-        name="novo-pedido.html", 
-        context={"request": request}
+        request,
+        name="novo-pedido.html"
     )
 
 @app.get("/lista-servicos", response_class=HTMLResponse)
 async def servicos_page(request: Request):
     return templates.TemplateResponse(
-        name="lista-servicos.html", 
-        context={"request": request}
+        request,
+        name="lista-servicos.html"
     )
 
 @app.get("/historico-pedidos", response_class=HTMLResponse)
 async def historico_page(request: Request):
     return templates.TemplateResponse(
-        name="historico-pedidos.html", 
-        context={"request": request}
+        request,
+        name="historico-pedidos.html"
     )
