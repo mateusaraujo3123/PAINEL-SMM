@@ -13,17 +13,15 @@
         <div class="logo-login">📈 Painel SMM</div>
         <div class="subtitle-login" id="formSubtitle">Entre na sua conta para gerenciar seus pedidos</div>
 
-        <!-- FORMULÁRIO DE LOGIN COM VALIDATORS PARA FASTAPI -->
+        <!-- FORMULÁRIO DE LOGIN -->
         <form id="loginForm">
             <div class="form-group">
                 <label>E-mail</label>
-                <!-- Atributo 'name="username"' é obrigatório para o Form(...) do FastAPI -->
-                <input type="email" name="username" id="login_email" required placeholder="seu@email.com">
+                <input type="email" id="login_email" required placeholder="seu@email.com">
             </div>
             <div class="form-group">
                 <label>Senha</label>
-                <!-- Atributo 'name="password"' é obrigatório para o Form(...) do FastAPI -->
-                <input type="password" name="password" id="login_senha" required placeholder="••••••••">
+                <input type="password" id="login_senha" required placeholder="••••••••">
             </div>
             <button type="submit" class="btn-login">Acessar Painel</button>
             <div class="toggle-form">
@@ -31,7 +29,7 @@
             </div>
         </form>
 
-        <!-- FORMULÁRIO DE CADASTRO COM VALIDATORS PARA FASTAPI (Oculto por padrão via JS) -->
+        <!-- FORMULÁRIO DE CADASTRO -->
         <form id="cadastroForm" style="display: none;">
             <div class="form-group">
                 <label>Nome Completo</label>
@@ -39,11 +37,11 @@
             </div>
             <div class="form-group">
                 <label>E-mail</label>
-                <input type="email" name="username" id="cad_email" required placeholder="seu@email.com">
+                <input type="email" id="cad_email" required placeholder="seu@email.com">
             </div>
             <div class="form-group">
                 <label>Senha</label>
-                <input type="password" name="password" id="cad_senha" required placeholder="Crie uma senha">
+                <input type="password" id="cad_senha" required placeholder="Crie uma senha">
             </div>
             <button type="submit" class="btn-login" style="background-color: #34c759;">Criar Minha Conta</button>
             <div class="toggle-form">
@@ -73,57 +71,76 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // PROCESSAMENTO DE CADASTRO ASSÍNCRONO COM ROTA RELATIVA CORRIGIDA
+        // PROCESSAMENTO DE CADASTRO (Envio via JSON para o FastAPI)
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(cadastroForm);
+            
+            const email = document.getElementById('cad_email').value;
+            const senha = document.getElementById('cad_senha').value;
 
             try {
-                const response = await fetch("./auth/cadastro", {
+                // Rota limpa /cadastro (Ajuste caso o prefixo do seu router mude no main.py)
+                const response = await fetch("/cadastro", {
                     method: "POST",
-                    body: formData
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: email,
+                        password: senha
+                    })
                 });
 
+                const resultado = await response.json();
+
                 if (!response.ok) {
-                    const erroData = await response.json();
-                    throw new Error(erroData.detail || "Falha ao registrar conta no servidor.");
+                    throw new Error(resultado.detail || "Falha ao registrar conta no servidor.");
                 }
 
-                const resultado = await response.json();
                 alert('✅ Conta criada com sucesso! Faça login para acessar.');
                 cadastroForm.style.display = 'none';
                 loginForm.style.display = 'block';
                 formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
+                cadastroForm.reset();
 
             } catch (error) {
                 console.error("Erro de Autenticação:", error);
-                alert("❌ Erro de Sistema: Não foi possível cadastrar. O servidor backend está offline ou inacessível.");
+                alert(`❌ Erro de Sistema: ${error.message}`);
             }
         });
 
-        // PROCESSAMENTO DE LOGIN ASSÍNCRONO COM REDIRECIONAMENTO CONTROLADO
+        // PROCESSAMENTO DE LOGIN (Envio via JSON ou x-www-form-urlencoded)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const formData = new FormData(loginForm);
+            
+            const email = document.getElementById('login_email').value;
+            const senha = document.getElementById('login_senha').value;
 
             try {
-                const response = await fetch("./auth/login", {
+                // Rota limpa /login (Sem pontos relativos)
+                const response = await fetch("/login", {
                     method: "POST",
-                    body: formData
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: email,
+                        password: senha
+                    })
                 });
 
+                const resultado = await response.json();
+
                 if (!response.ok) {
-                    const erroData = await response.json();
-                    throw new Error(erroData.detail || "Credenciais incorretas ou inválidas.");
+                    throw new Error(resultado.detail || "Credenciais incorretas ou inválidas.");
                 }
 
                 // O redirecionamento só acontece se o FastAPI responder com status 200 (Sucesso)
-                const resultado = await response.json();
-                window.location.href = resultado.redirecionar; 
+                window.location.href = resultado.redirecionar || "/dashboard"; 
 
             } catch (error) {
                 console.error("Erro de Autenticação:", error);
-                alert("❌ Acesso Negado: Usuário/Senha inválidos ou o servidor de segurança está fora do ar.");
+                alert(`❌ Acesso Negado: ${error.message}`);
             }
         });
     </script>
