@@ -1,19 +1,18 @@
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+# backend/app/database.py
+import os
+from sqlalchemy.ext.asyncio import create_async_session, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
 
-# Banco de dados local em arquivo. O prefixo +aiosqlite garante a assincronia.
-DATABASE_URL = "sqlite+aiosqlite:///./smm_panel.db"
+# Caminho absoluto fixo para evitar que a Railway apague o banco nos deploys
+DATABASE_URL = "sqlite+aiosqlite:////app/smm_panel.db"
 
-# Cria o motor de execução de alta performance
-engine = create_async_engine(DATABASE_URL, echo=False)
+from sqlalchemy.ext.asyncio import create_async_engine
+engine = create_async_engine(DATABASE_URL, connect_args={"timeout": 30})
 
-# Configura a fábrica de sessões assíncronas
-async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-
-# Classe base para criar as tabelas
+async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
-# Função que abre e fecha a conexão automaticamente nas rotas
 async def get_db():
     async with async_session() as session:
         yield session
+        await session.commit()
