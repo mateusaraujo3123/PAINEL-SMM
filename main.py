@@ -60,7 +60,7 @@ async def servir_login_js():
     raise HTTPException(status_code=404, detail="Script não encontrado")
 
 
-# 3. ROTAS VISUAIS DE ATENDIMENTO (Protegidas por Cookie HTTP-Only)
+# 3. ROTAS VISUAIS DE ATENDIMENTO (Protegidas por Cookie HTTP-Only e Alimentadas com Dados)
 
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
@@ -79,7 +79,8 @@ async def dashboard_page(request: Request):
     try:
         async for session in get_db():
             usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="dashboard.html")
+            # Passa o usuário real logado para preencher os dados dinâmicos na tela
+            return templates.TemplateResponse(request, name="dashboard.html", context={"request": request, "usuario": usuario})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -88,7 +89,7 @@ async def novo_pedido_page(request: Request):
     try:
         async for session in get_db():
             usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="novo-pedido.html")
+            return templates.TemplateResponse(request, name="novo-pedido.html", context={"request": request, "usuario": usuario})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -97,7 +98,7 @@ async def servicos_page(request: Request):
     try:
         async for session in get_db():
             usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="lista-servicos.html")
+            return templates.TemplateResponse(request, name="lista-servicos.html", context={"request": request, "usuario": usuario})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
 
@@ -106,6 +107,6 @@ async def historico_page(request: Request):
     try:
         async for session in get_db():
             usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="historico-pedidos.html")
+            return templates.TemplateResponse(request, name="historico-pedidos.html", context={"request": request, "usuario": usuario})
     except Exception:
         return RedirectResponse(url="/", status_code=303)
