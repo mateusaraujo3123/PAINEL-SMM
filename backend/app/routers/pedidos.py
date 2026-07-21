@@ -92,3 +92,26 @@ async def criar_pedido(
             
         except httpx.RequestError:
             raise HTTPException(status_code=503, detail="Falha de conexão com o servidor de distribuição.")
+
+@router.get("/servicos/lista")
+async def obter_lista_servicos_provedor():
+    """Busca a tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
+    # Parâmetros padrão exigidos pelas APIs SMM mundiais para listar serviços
+    params_provedor = {
+        "key": API_PROVEDOR_KEY,
+        "action": "services"
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            # Algumas APIs usam GET, outras exigem POST. O padrão global aceita POST com data
+            response = await client.post(API_PROVEDOR_URL, data=params_provedor, timeout=10.0)
+            
+            if response.status_code != 200:
+                # Fallback comercial caso a API Mãe esteja fora do ar temporariamente
+                return []
+                
+            return response.json()
+            
+        except httpx.RequestError:
+            return []
