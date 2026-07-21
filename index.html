@@ -1,148 +1,87 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel SMM - Entrar</title>
-    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
-    <link rel="stylesheet" href="/login.css">
-</head>
-<body>
+# main.py (Na raiz do repositório)
+import os
+from fastapi import FastAPI, Request, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 
-    <div class="login-container">
-        <div class="logo-login">📈 Painel SMM</div>
-        <div class="subtitle-login" id="formSubtitle">Entre na sua conta para gerenciar seus pedidos</div>
+# Importe seus roteadores originais
+from backend.app.routers import auth, pedidos
 
-        <!-- FORMULÁRIO DE LOGIN -->
-        <form id="loginForm">
-            <div class="form-group">
-                <label>E-mail</label>
-                <input type="email" id="login_email" required placeholder="seu@email.com">
-            </div>
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="password" id="login_senha" required placeholder="••••••••">
-            </div>
-            <button type="submit" class="btn-login">Acessar Painel</button>
-            <div class="toggle-form">
-                Não tem uma conta? <a href="#" id="btnIrParaCadastro">Cadastre-se</a>
-            </div>
-        </form>
+app = FastAPI(title="SMM Panel Premium")
 
-        <!-- FORMULÁRIO DE CADASTRO -->
-        <form id="cadastroForm" style="display: none;">
-            <div class="form-group">
-                <label>Nome Completo</label>
-                <input type="text" id="cad_nome" placeholder="Seu Nome">
-            </div>
-            <div class="form-group">
-                <label>E-mail</label>
-                <input type="email" id="cad_email" required placeholder="seu@email.com">
-            </div>
-            <div class="form-group">
-                <label>Senha</label>
-                <input type="password" id="cad_senha" required placeholder="Crie uma senha">
-            </div>
-            <button type="submit" class="btn-login" style="background-color: #34c759;">Criar Minha Conta</button>
-            <div class="toggle-form">
-                Já tem uma conta? <a href="#" id="btnIrParaLogin">Fazer Login</a>
-            </div>
-        </form>
-    </div>
+# Jinja2 olhando direto para a raiz do repositório
+templates = Jinja2Templates(directory=".")
 
-    <script>
-        const loginForm = document.getElementById('loginForm');
-        const cadastroForm = document.getElementById('cadastroForm');
-        const formSubtitle = document.getElementById('formSubtitle');
+# 1. Primeiro registramos as rotas da API para que tenham prioridade máxima
+app.include_router(auth.router)
+app.include_router(pedidos.router)
 
-        // Alternar visualmente para a tela de Cadastro
-        document.getElementById('btnIrParaCadastro').addEventListener('click', (e) => {
-            e.preventDefault();
-            loginForm.style.display = 'none';
-            cadastroForm.style.display = 'block';
-            formSubtitle.innerText = 'Crie sua carteira e comece a turbinar suas redes';
-        });
+# 2. Rota explícita e ultra segura para os arquivos estáticos soltos na raiz
+@app.get("/{arquivo_estatico}")
+async def servir_arquivos_raiz(arquivo_estatico: str, request: Request):
+    # Lista restrita apenas aos arquivos reais mapeados no seu GitHub
+    arquivos_validos = [
+        "login.css", "login.js", "style.css",
+        "dashboard.css", "novo-pedido.css", 
+        "lista-servicos.css", "historico-pedidos.css"
+    ]
+    
+    if arquivo_estatico in arquivos_validos and os.path.exists(arquivo_estatico):
+        media_type = "text/css" if arquivo_estatico.endswith(".css") else "application/javascript"
+        return FileResponse(arquivo_estatico, media_type=media_type)
+    
+    # Se o usuário digitou uma rota visual na URL (ex: /dashboard, /novo-pedido)
+    # o FastAPI não vai achar o arquivo na lista acima e processará as rotas HTML abaixo
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
 
-        // Alternar visualmente para a tela de Login
-        document.getElementById('btnIrParaLogin').addEventListener('click', (e) => {
-            e.preventDefault();
-            cadastroForm.style.display = 'none';
-            loginForm.style.display = 'block';
-            formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
-        });
+# 3. ROTAS VISUAIS DO PAINEL (Garantindo a presença obrigatória do request)
 
-        // PROCESSAMENTO DE CADASTRO (Envio via JSON para o FastAPI)
-        cadastroForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('cad_email').value;
-            const senha = document.getElementById('cad_senha').value;
+@app.get("/", response_class=HTMLResponse)
+async def login_page(request: Request):
+    try:
+        # Importe aqui a sua função de validação de cookie HTTP-Only
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario = await obter_usuario_logado(request)
+        if usuario:
+            return RedirectResponse(url="/dashboard", status_code=303)
+    except Exception:
+        pass
+    
+    # IMPORTANTE: Sempre passe o request no contexto para evitar Erro 500
+    return templates.TemplateResponse("index.html", {"request": request})
 
-            try {
-                // Rota limpa /cadastro (Ajuste caso o prefixo do seu router mude no main.py)
-                const response = await fetch("/cadastro", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        username: email,
-                        password: senha
-                    })
-                });
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page(request: Request):
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario = await obter_usuario_logado(request)
+        return templates.TemplateResponse("dashboard.html", {"request": request, "usuario": usuario})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
-                const resultado = await response.json();
+@app.get("/novo-pedido", response_class=HTMLResponse)
+async def novo_pedido_page(request: Request):
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario = await obter_usuario_logado(request)
+        return templates.TemplateResponse("novo-pedido.html", {"request": request, "usuario": usuario})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
-                if (!response.ok) {
-                    throw new Error(resultado.detail || "Falha ao registrar conta no servidor.");
-                }
+@app.get("/lista-servicos", response_class=HTMLResponse)
+async def servicos_page(request: Request):
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario = await obter_usuario_logado(request)
+        return templates.TemplateResponse("lista-servicos.html", {"request": request, "usuario": usuario})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
 
-                alert('✅ Conta criada com sucesso! Faça login para acessar.');
-                cadastroForm.style.display = 'none';
-                loginForm.style.display = 'block';
-                formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
-                cadastroForm.reset();
-
-            } catch (error) {
-                console.error("Erro de Autenticação:", error);
-                alert(`❌ Erro de Sistema: ${error.message}`);
-            }
-        });
-
-        // PROCESSAMENTO DE LOGIN (Envio via JSON ou x-www-form-urlencoded)
-        loginForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('login_email').value;
-            const senha = document.getElementById('login_senha').value;
-
-            try {
-                // Rota limpa /login (Sem pontos relativos)
-                const response = await fetch("/login", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        username: email,
-                        password: senha
-                    })
-                });
-
-                const resultado = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(resultado.detail || "Credenciais incorretas ou inválidas.");
-                }
-
-                // O redirecionamento só acontece se o FastAPI responder com status 200 (Sucesso)
-                window.location.href = resultado.redirecionar || "/dashboard"; 
-
-            } catch (error) {
-                console.error("Erro de Autenticação:", error);
-                alert(`❌ Acesso Negado: ${error.message}`);
-            }
-        });
-    </script>
-</body>
-</html>
+@app.get("/historico-pedidos", response_class=HTMLResponse)
+async def historico_page(request: Request):
+    try:
+        from backend.app.routers.auth import obter_usuario_logado
+        usuario = await obter_usuario_logado(request)
+        return templates.TemplateResponse("historico-pedidos.html", {"request": request, "usuario": usuario})
+    except Exception:
+        return RedirectResponse(url="/", status_code=303)
