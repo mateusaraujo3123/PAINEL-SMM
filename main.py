@@ -5,6 +5,8 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
 from sqladmin.authentication import AuthenticationBackend
