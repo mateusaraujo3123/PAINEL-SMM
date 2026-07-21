@@ -18,7 +18,7 @@ from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDO (Sintaxe Oficial Starlette)
+# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES (Sintaxe Oficial Starlette)
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM"
@@ -34,6 +34,7 @@ ADMIN_PASS = "mathiasriquelme"  # Sua senha secreta master
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
+        # Recupera os dados do formulário de login de forma assíncrona
         form = await request.form()
         username = form.get("username")
         password = form.get("password")
@@ -88,6 +89,7 @@ async def startup_event():
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
+# Rotas exclusivas para arquivos CSS
 @app.get("/login.css")
 async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
 @app.get("/dashboard.css")
@@ -99,6 +101,7 @@ async def servir_lista_servicos_css(): return FileResponse("lista-servicos.css",
 @app.get("/historico-pedidos.css")
 async def servir_historico_pedidos_css(): return FileResponse("historico-pedidos.css", media_type="text/css")
 
+# Renderização de Páginas HTML (Com dicionário de contexto corrigido)
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     try:
@@ -106,7 +109,7 @@ async def login_page(request: Request):
             usuario = await obter_usuario_logado(request, db=session)
             if usuario: return RedirectResponse(url="/dashboard", status_code=303)
     except Exception: pass
-    return templates.TemplateResponse(request, name="index.html")
+    return templates.TemplateResponse(request, name="index.html", context={"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
