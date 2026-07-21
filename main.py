@@ -18,16 +18,22 @@ from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES EXIGIDO PELO SQLADMIN (Proteção contra o Erro)
-app.add_middleware(SessionMiddleware, secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM")
+# 🔴 ATIVAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDO PARA HTTPS (Resolve o loop de login na Railway)
+app.add_middleware(
+    SessionMiddleware, 
+    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
+    session_cookie="admin_session",
+    secure=True,       # Força o cookie a rodar via HTTPS seguro da Railway
+    same_site="lax"    # Permite navegação limpa sem bloqueios de segurança do navegador
+)
 
 templates = Jinja2Templates(directory=".")
 
 # ========================================================
 # 🔒 TRAVA DE SEGURANÇA EXCLUSIVA DO SEU PAINEL ADMIN
 # ========================================================
-ADMIN_USER = "leivisonmateus2021@gmail.com"  # 🔴 Mude para o seu e-mail de acesso master
-ADMIN_PASS = "mathiasriquelme"  # 🔴 Mude para a sua senha secreta master
+ADMIN_USER = "leivisonmateus2021@gmail.com"  # Seu e-mail de acesso master
+ADMIN_PASS = "mathiasriquelme"  # Sua senha secreta master
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
