@@ -71,29 +71,30 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // PROCESSAMENTO DE CADASTRO (Envio via JSON tratado para o FastAPI)
+        // PROCESSAMENTO DE CADASTRO (Envio em Form-Urlencoded para FastAPI)
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('cad_email').value;
             const senha = document.getElementById('cad_senha').value;
 
+            // Formatação correta em x-www-form-urlencoded exigida pelo seu backend
+            const dadosFormulario = new URLSearchParams();
+            dadosFormulario.append('username', email);
+            dadosFormulario.append('password', senha);
+
             try {
                 const response = await fetch("/auth/cadastro", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/x-www-form-urlencoded"
                     },
-                    body: JSON.stringify({
-                        username: email,
-                        password: senha
-                    })
+                    body: dadosFormulario.toString()
                 });
 
                 const resultado = await response.json();
 
                 if (!response.ok) {
-                    // Tratamento robusto: se detail for uma lista de erros do Pydantic, formata como texto legível
                     if (Array.isArray(resultado.detail)) {
                         const mensagensErro = resultado.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n');
                         throw new Error(mensagensErro);
@@ -113,23 +114,25 @@
             }
         });
 
-        // PROCESSAMENTO DE LOGIN (Coordenado com o backend)
+        // PROCESSAMENTO DE LOGIN (Envio em Form-Urlencoded para FastAPI)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('login_email').value;
             const senha = document.getElementById('login_senha').value;
 
+            // Formatação correta em x-www-form-urlencoded exigida pelo seu backend
+            const dadosFormulario = new URLSearchParams();
+            dadosFormulario.append('username', email);
+            dadosFormulario.append('password', senha);
+
             try {
                 const response = await fetch("/auth/login", {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/x-www-form-urlencoded"
                     },
-                    body: JSON.stringify({
-                        username: email,
-                        password: senha
-                    })
+                    body: dadosFormulario.toString()
                 });
 
                 const resultado = await response.json();
@@ -142,6 +145,7 @@
                     throw new Error(resultado.detail || "Credenciais incorretas ou inválidas.");
                 }
 
+                // Armazena e redireciona de acordo com o retorno do backend
                 window.location.href = resultado.redirecionar || "/dashboard"; 
 
             } catch (error) {
