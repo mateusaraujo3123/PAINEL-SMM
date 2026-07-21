@@ -1,51 +1,38 @@
+// login.js (Ajuste o evento de Submit do Cadastro)
 document.addEventListener("DOMContentLoaded", () => {
-    
-    // 1. FORMULÁRIO DE CADASTRO
-    const formCadastro = document.querySelector("#seu-formulario-cadastro"); // Substitua pelo ID real do seu form de cadastro
+    const formCadastro = document.getElementById("formCadastro"); // Certifique-se de que o id no index.html seja este
+
     if (formCadastro) {
         formCadastro.addEventListener("submit", async (e) => {
             e.preventDefault();
-            const formData = new FormData(formCadastro);
+
+            // Captura dos inputs internos do formulário
+            const emailInput = document.getElementById("cadEmail").value;
+            const senhaInput = document.getElementById("cadSenha").value;
 
             try {
-                const response = await fetch("/auth/cadastro", {
+                const response = await fetch("/cadastro", {
                     method: "POST",
-                    body: formData
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        username: emailInput,
+                        password: senhaInput
+                    })
                 });
-                const resultado = await response.json();
+
+                const dados = await response.json();
 
                 if (response.ok) {
-                    alert("Sucesso: " + resultado.mensagem);
+                    alert("Conta Premium criada com sucesso!");
+                    window.location.href = "/"; // Redireciona para o login ou dashboard
                 } else {
-                    alert("Erro no cadastro: " + (resultado.detail || "Falha ao registrar."));
+                    alert(`Erro: ${dados.detail || "Falha ao realizar cadastro."}`);
                 }
-            } catch (error) {
-                console.error("Erro:", error);
-            }
-        });
-    }
-
-    // 2. FORMULÁRIO DE LOGIN
-    const formLogin = document.querySelector("#seu-formulario-login"); // Substitua pelo ID real do seu form de login
-    if (formLogin) {
-        formLogin.addEventListener("submit", async (e) => {
-            e.preventDefault();
-            const formData = new FormData(formLogin);
-
-            try {
-                const response = await fetch("/auth/login", {
-                    method: "POST",
-                    body: formData
-                });
-                const resultado = await response.json();
-
-                if (response.ok) {
-                    window.location.href = resultado.redirecionar; 
-                } else {
-                    alert("Erro no login: " + (resultado.detail || "Credenciais inválidas."));
-                }
-            } catch (error) {
-                console.error("Erro:", error);
+            } catch (erro) {
+                console.error("Erro na comunicação com a API:", erro);
+                alert("Erro crítico de rede. Tente novamente mais tarde.");
             }
         });
     }
