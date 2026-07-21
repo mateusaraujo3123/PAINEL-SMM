@@ -1,51 +1,45 @@
-import os
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
+# main.py (Na raiz do repositório)
+from fastapi import FastAPI, Request, Depends
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, RedirectResponse
-from backend.app.database import engine, Base
-from backend.app.routers import auth, pedidos
+import os
 
-app = FastAPI(title="SMM Panel API")
+app = FastAPI(title="SMM Panel Premium")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# Jinja configurado diretamente na raiz do projeto
+templates = Jinja2Templates(directory=".")
 
-@app.on_event("startup")
-async def startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+# --- ROTA DINÂMICA PARA ARQUIVOS ESTÁTICOS SOLTOS NA RAIZ ---
+# Impede que você tenha que criar uma rota manual para cada arquivo .css ou .js
+@app.get("/{arquivo_estatico}")
+async def servir_arquivos_raiz(arquivo_estatico: str):
+    extensoes_permitidas = [".css", ".js", ".png", ".jpg", ".svg", ".ico"]
+    extensao = os.path.splitext(arquivo_estatico)[1]
+    
+    if extensao in extensoes_permitidas and os.path.exists(arquivo_estatico):
+        media_types = {
+            ".css": "text/css",
+            ".js": "application/javascript",
+            ".png": "image/png",
+            ".jpg": "image/jpeg",
+            ".svg": "image/svg+xml",
+            ".ico": "image/x-icon"
+        }
+        return FileResponse(arquivo_estatico, media_type=media_types.get(extensao, "text/plain"))
+    
+    # Se não for um arquivo válido, deixa o FastAPI repassar para as rotas visuais
+    from fastapi import HTTPException
+    raise HTTPException(status_code=404, detail="Arquivo não encontrado")
 
-app.include_router(auth.router)
-app.include_router(pedidos.router)
-
-# Pega o caminho absoluto da sua raiz onde estão os arquivos soltos
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-
-# Monta a própria raiz como servidora de arquivos diretamente
-app.mount("/", StaticFiles(directory=BASE_DIR, html=True), name="raiz")
-templates = Jinja2Templates(directory=BASE_DIR)
-
-# --- ROTAS JINJA2 CORRIGIDAS ---
-
+# --- ROTAS VISUAIS DE ATENDIMENTO (Exemplo de proteção de estado) ---
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
-    return templates.TemplateResponse(name="index.html", context={"request": request})
+    return templates.TemplateResponse("index.html", {"request": request})
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard_page(request: Request):
-    try:
-        from backend.app.routers.auth import obter_usuario_logado
-        usuario_ativo = await obter_usuario_logado(request)
-        return templates.TemplateResponse(name="dashboard.html", context={"request": request, "usuario": usuario_ativo})
-    except Exception:
-        return RedirectResponse(url="/", status_code=303)
+    # Seu bloco try/except com obter_usuario_logado(request) entra aqui
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 @app.get("/novo-pedido", response_class=HTMLResponse)
 async def novo_pedido_page(request: Request):
