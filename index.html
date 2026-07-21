@@ -71,7 +71,7 @@
             formSubtitle.innerText = 'Entre na sua conta para gerenciar seus pedidos';
         });
 
-        // PROCESSAMENTO DE CADASTRO (Envio via JSON para o FastAPI)
+        // PROCESSAMENTO DE CADASTRO (Envio via JSON tratado para o FastAPI)
         cadastroForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -79,7 +79,6 @@
             const senha = document.getElementById('cad_senha').value;
 
             try {
-                // Rota corrigida com o prefixo /auth do seu backend
                 const response = await fetch("/auth/cadastro", {
                     method: "POST",
                     headers: {
@@ -94,6 +93,11 @@
                 const resultado = await response.json();
 
                 if (!response.ok) {
+                    // Tratamento robusto: se detail for uma lista de erros do Pydantic, formata como texto legível
+                    if (Array.isArray(resultado.detail)) {
+                        const mensagensErro = resultado.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n');
+                        throw new Error(mensagensErro);
+                    }
                     throw new Error(resultado.detail || "Falha ao registrar conta no servidor.");
                 }
 
@@ -105,11 +109,11 @@
 
             } catch (error) {
                 console.error("Erro de Autenticação:", error);
-                alert(`❌ Erro de Sistema: ${error.message}`);
+                alert(`❌ Erro de Sistema:\n${error.message}`);
             }
         });
 
-        // PROCESSAMENTO DE LOGIN (Envio via JSON coordenado com o backend)
+        // PROCESSAMENTO DE LOGIN (Coordenado com o backend)
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -117,7 +121,6 @@
             const senha = document.getElementById('login_senha').value;
 
             try {
-                // Rota corrigida com o prefixo /auth do seu backend
                 const response = await fetch("/auth/login", {
                     method: "POST",
                     headers: {
@@ -132,15 +135,18 @@
                 const resultado = await response.json();
 
                 if (!response.ok) {
+                    if (Array.isArray(resultado.detail)) {
+                        const mensagensErro = resultado.detail.map(err => `${err.loc.join('.')} -> ${err.msg}`).join('\n');
+                        throw new Error(mensagensErro);
+                    }
                     throw new Error(resultado.detail || "Credenciais incorretas ou inválidas.");
                 }
 
-                // O redirecionamento só acontece se o FastAPI responder com status 200 (Sucesso)
                 window.location.href = resultado.redirecionar || "/dashboard"; 
 
             } catch (error) {
                 console.error("Erro de Autenticação:", error);
-                alert(`❌ Acesso Negado: ${error.message}`);
+                alert(`❌ Acesso Negado:\n${error.message}`);
             }
         });
     </script>
