@@ -13,18 +13,16 @@ from starlette.middleware.sessions import SessionMiddleware
 # Importações do banco e dos modelos
 from backend.app.database import engine, get_db
 from backend.app.models.models import Base, Usuario
-from backend.app.routers import auth, pedidos
-from backend.app.routers.auth import obter_usuario_logado
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES (Protegido para Produção/Railway)
+# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDA (Sintaxe Oficial Starlette)
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
     session_cookie="smm_admin_session",
-    same_site="lax",   # Permite o redirecionamento estável na nuvem
-    secure=True        # Força o uso exclusivo via HTTPS em produção
+    same_site="lax",
+    https_only=True     # 👈 CORRIGIDO: O nome correto do parâmetro é https_only
 )
 
 templates = Jinja2Templates(directory=".")
@@ -37,13 +35,11 @@ ADMIN_PASS = "mathiasriquelme"  # Sua senha secreta master
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
-        # Recupera os dados do formulário de login de forma assíncrona
         form = await request.form()
         username = form.get("username")
         password = form.get("password")
 
         if username == ADMIN_USER and password == ADMIN_PASS:
-            # Escreve o identificador único na sessão criptografada da Starlette
             request.session.update({"token": "sessao_admin_valida_smm"})
             return True
         return False
@@ -90,10 +86,12 @@ async def startup_event():
         await conn.run_sync(Base.metadata.create_all)
     print("🚀 Banco de dados SMM operacional e estável na nuvem!")
 
+# Importações dinâmicas tardias para evitar dependências circulares
+from backend.app.routers import auth, pedidos
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
-# Rotas exclusivas para arquivos CSS
+# Rotas de arquivos estáticos CSS
 @app.get("/login.css")
 async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
 @app.get("/dashboard.css")
@@ -105,11 +103,12 @@ async def servir_lista_servicos_css(): return FileResponse("lista-servicos.css",
 @app.get("/historico-pedidos.css")
 async def servir_historico_pedidos_css(): return FileResponse("historico-pedidos.css", media_type="text/css")
 
-# Renderização de Páginas HTML (Com dicionário de contexto corrigido)
+# Renderização de Páginas HTML através do Jinja2
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     try:
         async for session in get_db():
+            from backend.app.routers.auth import obter_usuario_logado
             usuario = await obter_usuario_logado(request, db=session)
             if usuario: return RedirectResponse(url="/dashboard", status_code=303)
     except Exception: pass
@@ -119,6 +118,7 @@ async def login_page(request: Request):
 async def dashboard_page(request: Request):
     try:
         async for session in get_db():
+            from backend.app.routers.auth import obter_usuario_logado
             usuario = await obter_usuario_logado(request, db=session)
             return templates.TemplateResponse(request, name="dashboard.html", context={"request": request, "usuario": usuario})
     except Exception: return RedirectResponse(url="/", status_code=303)
@@ -127,6 +127,7 @@ async def dashboard_page(request: Request):
 async def novo_pedido_page(request: Request):
     try:
         async for session in get_db():
+            from backend.app.routers.auth import obter_usuario_logado
             usuario = await obter_usuario_logado(request, db=session)
             return templates.TemplateResponse(request, name="novo-pedido.html", context={"request": request, "usuario": usuario})
     except Exception: return RedirectResponse(url="/", status_code=303)
@@ -135,6 +136,7 @@ async def novo_pedido_page(request: Request):
 async def servicos_page(request: Request):
     try:
         async for session in get_db():
+            from backend.app.routers.auth import obter_usuario_logado
             usuario = await obter_usuario_logado(request, db=session)
             return templates.TemplateResponse(request, name="lista-servicos.html", context={"request": request, "usuario": usuario})
     except Exception: return RedirectResponse(url="/", status_code=303)
@@ -143,6 +145,7 @@ async def servicos_page(request: Request):
 async def historico_page(request: Request):
     try:
         async for session in get_db():
+            from backend.app.routers.auth import obter_usuario_logado
             usuario = await obter_usuario_logado(request, db=session)
             return templates.TemplateResponse(request, name="historico-pedidos.html", context={"request": request, "usuario": usuario})
     except Exception: return RedirectResponse(url="/", status_code=303)
