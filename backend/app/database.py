@@ -1,30 +1,18 @@
-# backend/app/database.py
 import os
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 
-# 1. Força o uso do volume da Railway se estiver rodando na nuvem.
-# O Railway sempre injeta variáveis de ambiente como RAILWAY_ENVIRONMENT.
-if os.getenv("RAILWAY_ENVIRONMENT"):
-    VOLUME_DIR = "/data"
-else:
-    # Fallback seguro para o seu computador local
-    VOLUME_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# URL do seu banco Postgres da Railway com o driver assíncrono (asyncpg) incluído
+DATABASE_URL = "postgresql+asyncpg://postgres:CTnFzqnYvjQzGufkJEnlHbabmrLSCJFY@postgres.railway.internal:5432/railway"
 
-# Garante que a pasta exista (necessário para o ambiente local ou se o volume iniciar vazio)
-os.makedirs(VOLUME_DIR, exist_ok=True)
+# Criação do motor de conexão assíncrono para o Postgres
+engine = create_async_engine(DATABASE_URL, connect_args={})
 
-DB_PATH = os.path.join(VOLUME_DIR, "smm_panel.db")
-
-# String de conexão imune a novos deploys
-DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
-
-engine = create_async_engine(DATABASE_URL, connect_args={"timeout": 30})
-
+# Configuração do gerador de sessões do banco de dados
 async_session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()
 
-# 2. Remoção do commit global automático que causava travamentos em rotas de leitura
+# Função que distribui as conexões para as rotas do seu FastAPI
 async def get_db():
     async with async_session() as session:
         yield session
