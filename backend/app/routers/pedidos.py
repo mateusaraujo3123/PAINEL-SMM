@@ -1,27 +1,27 @@
-# backend/app/routers/pedidos.py
 from fastapi import APIRouter, Depends, HTTPException, status, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-import httpx  # Cliente HTTP assíncrono para falar com a API mãe
+from sqlalchemy.future import select
+import httpx
 from backend.app.database import get_db
-from backend.app.routers.auth import obter_usuario_logado # Para verificar quem está comprando
+from backend.app.routers.auth import obter_usuario_logado
+from backend.app.models.models import Usuario, Pedido  # Importando seus modelos nativos
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos"])
 
-# Pydantic Schema Alinhado perfeitamente com o envio do seu JavaScript
 class PedidoSchema(BaseModel):
     service_id: int
-    link: str
-    quantity: int
+    link: str = Field(..., min_length=5)
+    quantity: int = Field(..., gte=1)
 
-# CONFIGURAÇÃO DA API PROVEDORA (Substitua pelos dados da sua API mãe real)
+# CONFIGURAÇÃO DA API PROVEDORA
 API_PROVEDOR_URL = "https://api-provedor-smm.com"
 API_PROVEDOR_KEY = "SUA_CHAVE_DA_API_MAE"
 
-# Tabela comercial de preços de custo (Sincronizada com os valores do seu select no HTML)
+# Tabela comercial de preços de custo (Preço por 1000 envios)
 PRECOS_PAINEL = {
-    101: 12.50,  # ID 101 -> R$ 12,50 por 1000 seguidores
-    102: 8.90    # ID 102 -> R$ 8,90 por 1000 seguidores
+    101: 12.50,  # ID 101 -> R$ 12,50 por 1000
+    102: 8.90    # ID 102 -> R$ 8,90 por 1000
 }
 
 @router.post("/criar", status_code=status.HTTP_201_CREATED)
@@ -30,32 +30,52 @@ async def criar_pedido(
     pedido: PedidoSchema, 
     db: AsyncSession = Depends(get_db)
 ):
-    """Recebe o pedido, checa e debita o saldo, e despacha para o provedor principal."""
+    """Recebe o pedido, checa e debita o saldo com Lock, e despacha para o provedor."""
     
-    # 1. VALIDAÇÃO DE SEGURANÇA: Bloqueia o pedido se o usuário não estiver logado
-    try:
-        usuario = await obter_usuario_logado(request, db=db)
-    except Exception:
+    # 1. VALIDAÇÃO DE SEGURANÇA
+    usuario_sessao = await obter_usuario_logado(request, db=db)
+    if not usuario_sessao:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, 
             detail="Sessão inválida ou expirada. Faça login novamente."
         )
 
-    # 2. VALIDAÇÃO COMERCIAL DE CUSTO: Descobre quanto o pedido vai custar
+    # 2. VALIDAÇÃO COMERCIAL DE CUSTO
     preco_por_mil = PRECOS_PAINEL.get(pedido.service_id)
     if not preco_por_mil:
         raise HTTPException(status_code=400, detail="O serviço selecionado é inválido ou não existe.")
 
-    custo_total = (pedido.quantity / 1000) * preco_por_mil
+    custo_total = round((pedido.quantity / 1000) * preco_por_mil, 4)
 
-    # 3. VALIDAÇÃO DE SALDO: Verifica se o cliente tem dinheiro suficiente no banco local
-    if usuario.saldo < custo_total:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail=f"Saldo insuficiente. Este pedido custa R$ {custo_total:.2f} e você possui R$ {usuario.saldo:.2f}."
+    # 3. LOCK CONCORRENTE DE SALDO (Evita Double-Spending / Cliques Duplos)
+    # Abrimos o bloco begin() para o SQLite garantir isolamento absoluto na checagem
+    async with db.begin():
+        query = select(Usuario).where(Usuario.id == usuario_sessao.id).with_for_update()
+        resultado = await db.execute(query)
+        usuario = resultado.scalar_one_or_none()
+
+        if not usuario or usuario.saldo < custo_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Saldo insuficiente. Custo: R$ {custo_total:.2f} | Saldo: R$ {usuario.saldo:.2f}."
+            )
+
+        # 4. DEBITA O SALDO IMEDIATAMENTE NO BANCO LOCAL
+        usuario.saldo = round(usuario.saldo - custo_total, 4)
+        
+        # 5. SALVA O PEDIDO LOCALMENTE COMO "PROCESSANDO"
+        novo_pedido = Pedido(
+            usuario_id=usuario.id,
+            servico_id=pedido.service_id,
+            link=pedido.link,
+            quantidade=pedido.quantity,
+            custo_total=custo_total,
+            status="Processando"
         )
+        db.add(novo_pedido)
+        await db.flush()  # Executa o push para gerar o ID do pedido local antes de ir para a API externa
 
-    # 4. Monta o payload no padrão exato exigido pelas APIs SMM mundiais
+    # 6. DISPARO ASSÍNCRONO PARA A API MÃE SMM (Fora do lock para não congelar o banco local)
     payload_provedor = {
         "key": API_PROVEDOR_KEY,
         "action": "add",
@@ -64,39 +84,50 @@ async def criar_pedido(
         "quantity": pedido.quantity
     }
     
-    # 5. Faz o disparo assíncrono para a API Mãe SMM
     async with httpx.AsyncClient() as client:
         try:
-            response = await client.post(API_PROVEDOR_URL, data=payload_provedor, timeout=10.0)
+            response = await client.post(API_PROVEDOR_URL, data=payload_provedor, timeout=12.0)
             
             if response.status_code != 200:
+                # Se a API mãe cair, reabre transação curta e realiza o estorno de segurança
+                async with db.begin():
+                    novo_pedido.status = "Cancelado"
+                    usuario.saldo = round(usuario.saldo + custo_total, 4)
                 raise HTTPException(status_code=502, detail="O provedor SMM principal demorou a responder.")
                 
             dados_retorno = response.json()
             
-            # Se a API mãe recusar a operação (ex: link quebrado, erro do servidor delas)
             if "error" in dados_retorno:
+                # Se a API mãe recusar os parâmetros (link inválido, etc), faz o estorno
+                async with db.begin():
+                    novo_pedido.status = "Cancelado"
+                    usuario.saldo = round(usuario.saldo + custo_total, 4)
                 raise HTTPException(status_code=400, detail=dados_retorno["error"])
                 
-            # 6. REGRA DE NEGÓCIO: Se a API mãe aceitou, debita o dinheiro da carteira do cliente no SQLite
-            usuario.saldo -= custo_total
-            db.add(usuario)
-            await db.commit() # Salva a nova alteração de saldo no banco de dados
+            # 7. SUCESSO: Vincula o ID retornado pela API Mãe ao pedido do banco local
+            async with db.begin():
+                novo_pedido.api_order_id = dados_retorno.get("order")
+                novo_pedido.status = "Em Processamento"
 
-            # Retorno mapeado para o JavaScript ler e exibir no alert()
             return {
                 "status": "sucesso",
-                "order_id": dados_retorno.get("order"),
+                "order_id": novo_pedido.id,
+                "api_order_id": novo_pedido.api_order_id,
+                "novo_saldo": usuario.saldo,
                 "mensagem": "Seu pedido foi enviado e já está em processamento!"
             }
             
         except httpx.RequestError:
+            # Tratamento de erro físico/queda de internet com estorno completo
+            async with db.begin():
+                novo_pedido.status = "Cancelado"
+                usuario.saldo = round(usuario.saldo + custo_total, 4)
             raise HTTPException(status_code=503, detail="Falha de conexão com o servidor de distribuição.")
+
 
 @router.get("/servicos/lista")
 async def obter_lista_servicos_provedor():
     """Busca a tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
-    # Parâmetros padrão exigidos pelas APIs SMM mundiais para listar serviços
     params_provedor = {
         "key": API_PROVEDOR_KEY,
         "action": "services"
@@ -104,14 +135,9 @@ async def obter_lista_servicos_provedor():
     
     async with httpx.AsyncClient() as client:
         try:
-            # Algumas APIs usam GET, outras exigem POST. O padrão global aceita POST com data
             response = await client.post(API_PROVEDOR_URL, data=params_provedor, timeout=10.0)
-            
             if response.status_code != 200:
-                # Fallback comercial caso a API Mãe esteja fora do ar temporariamente
                 return []
-                
             return response.json()
-            
         except httpx.RequestError:
             return []
