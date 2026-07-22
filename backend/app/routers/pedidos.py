@@ -2,10 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-import httpx
 from backend.app.database import get_db
 from backend.app.routers.auth import obter_usuario_logado
 from backend.app.models.models import Usuario, Pedido
+
+# Injeta de forma desacoplada o motor modular do Fama Social
+from backend.app.services.smm_provider import despachar_ordem_provedor
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos"])
 
@@ -14,14 +16,11 @@ class PedidoSchema(BaseModel):
     link: str = Field(..., min_length=5)
     quantity: int = Field(..., gte=1)
 
-# CONFIGURAÇÃO DA API PROVEDORA
-API_PROVEDOR_URL = "https://api-provedor-smm.com"
-API_PROVEDOR_KEY = "SUA_CHAVE_DA_API_MAE"
-
-# Tabela comercial de preços de custo (Preço por 1000 envios)
+# Tabela comercial de preços de custo (Sincronizada com os valores do seu select no HTML)
+# IMPORTANTE: Mapeie o ID do serviço local com o preço que você quer cobrar do seu cliente
 PRECOS_PAINEL = {
-    101: 12.50,  # ID 101 -> R$ 12,50 por 1000
-    102: 8.90    # ID 102 -> R$ 8,90 por 1000
+    101: 12.50,  # ID do seu HTML -> R$ 12,50 por 1000 envios
+    102: 8.90    # ID do seu HTML -> R$ 8,90 por 1000 envios
 }
 
 @router.post("/criar", status_code=status.HTTP_201_CREATED)
@@ -30,9 +29,9 @@ async def criar_pedido(
     pedido: PedidoSchema, 
     db: AsyncSession = Depends(get_db)
 ):
-    """Recebe o pedido, checa e debita o saldo com Lock, e despacha para o provedor."""
+    """Recebe a solicitação do front, debita com lock de segurança e despacha para o Fama Social."""
     
-    # 1. VALIDAÇÃO DE SEGURANÇA
+    # 1. VALIDAÇÃO DE SESSÃO
     usuario_sessao = await obter_usuario_logado(request, db=db)
     if not usuario_sessao:
         raise HTTPException(
@@ -40,31 +39,31 @@ async def criar_pedido(
             detail="Sessão inválida ou expirada. Faça login novamente."
         )
 
-    # 2. VALIDAÇÃO COMERCIAL DE CUSTO
+    # 2. VALIDAÇÃO COMERCIAL DE PREÇOS
     preco_por_mil = PRECOS_PAINEL.get(pedido.service_id)
     if not preco_por_mil:
         raise HTTPException(status_code=400, detail="O serviço selecionado é inválido ou não existe.")
 
     custo_total = round((pedido.quantity / 1000) * preco_por_mil, 4)
 
-    # 3. LOCK CONCORRENTE DE SALDO (Evita Double-Spending / Cliques Duplos)
+    # 3. VERIFICAÇÃO ATÔMICA DE SALDO (Bloqueia a linha no SQLite contra fraudes de cliques múltiplos)
     async with db.begin():
         query = select(Usuario).where(Usuario.id == usuario_sessao.id).with_for_update()
         resultado = await db.execute(query)
-        usuario = resultado.scalar_one_or_none()
+        usuario_real = resultado.scalar_one_or_none()
 
-        if not usuario or usuario.saldo < custo_total:
+        if not usuario_real or usuario_real.saldo < custo_total:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, 
-                detail=f"Saldo insuficiente. Custo: R$ {custo_total:.2f} | Saldo: R$ {usuario.saldo:.2f}."
+                detail=f"Saldo insuficiente. Custo: R$ {custo_total:.2f} | Saldo disponível: R$ {usuario_sessao.saldo:.2f}."
             )
 
-        # 4. DEBITA O SALDO IMEDIATAMENTE NO BANCO LOCAL
-        usuario.saldo = round(usuario.saldo - custo_total, 4)
+        # 4. DEBITA O SALDO IMEDIATAMENTE DA CARTEIRA DIGITAL LOCAL
+        usuario_real.saldo = round(usuario_real.saldo - custo_total, 4)
         
-        # 5. SALVA O PEDIDO LOCALMENTE COMO "PROCESSANDO"
+        # 5. REGISTRA A ORDEM LOCAL COMO "PROCESSANDO"
         novo_pedido = Pedido(
-            usuario_id=usuario.id,
+            usuario_id=usuario_real.id,
             servico_id=pedido.service_id,
             link=pedido.link,
             quantidade=pedido.quantity,
@@ -72,60 +71,49 @@ async def criar_pedido(
             status="Processando"
         )
         db.add(novo_pedido)
-        await db.flush()
+        await db.flush()  # Salva temporariamente para fixar o ID local antes do disparo externo
 
-    # 6. DISPARO ASSÍNCRONO PARA A API MÃE SMM (Fora do lock)
-    payload_provedor = {
-        "key": API_PROVEDOR_KEY,
-        "action": "add",
-        "service": pedido.service_id,
-        "link": pedido.link,
-        "quantity": pedido.quantity
-    }
+    # 6. DISPARO PARA A API MÃE (Chama o motor isolado do Fama Social)
+    # IMPORTANTE: Mapeie aqui se o ID do seu serviço do HTML for diferente do ID do provedor
+    id_provedor_real = pedido.service_id  # Se forem iguais, repassa direto. Caso contrário altere aqui.
     
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(API_PROVEDOR_URL, data=payload_provedor, timeout=12.0)
+    api_order_id = await despachar_ordem_provedor(
+        service_id=id_provedor_real,
+        link=pedido.link,
+        quantity=pedido.quantity
+    )
+    
+    # 7. CONSOLIDAÇÃO TRANSACIONAL DO PROVEDOR EXTERNO
+    if api_order_id:
+        # Sucesso: Vincula o código de entrega gerado pelo Fama Social e altera o status
+        async with db.begin():
+            novo_pedido.api_order_id = api_order_id
+            novo_pedido.status = "Em Processamento"
             
-            if response.status_code != 200:
-                async with db.begin():
-                    novo_pedido.status = "Cancelado"
-                    usuario.saldo = round(usuario.saldo + custo_total, 4)
-                raise HTTPException(status_code=502, detail="O provedor SMM principal demorou a responder.")
-                
-            dados_retorno = response.json()
+        return {
+            "status": "sucesso",
+            "order_id": novo_pedido.id,
+            "api_order_id": api_order_id,
+            "mensagem": "Seu pedido foi enviado e já está em processamento!"
+        }
+    else:
+        # Estorno de Segurança: Se a API mãe recusar (Ex: fora do ar ou sem saldo), devolve o dinheiro na hora
+        async with db.begin():
+            novo_pedido.status = "Cancelado"
+            usuario_real.saldo = round(usuario_real.saldo + custo_total, 4)
             
-            if "error" in dados_retorno:
-                async with db.begin():
-                    novo_pedido.status = "Cancelado"
-                    usuario.saldo = round(usuario.saldo + custo_total, 4)
-                raise HTTPException(status_code=400, detail=dados_retorno["error"])
-                
-            # 7. SUCESSO: Vincula o ID retornado pela API Mãe
-            async with db.begin():
-                novo_pedido.api_order_id = dados_retorno.get("order")
-                novo_pedido.status = "Em Processamento"
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, 
+            detail="O provedor SMM recusou a ordem ou está em manutenção. Seu saldo foi estornado."
+        )
 
-            return {
-                "status": "sucesso",
-                "order_id": novo_pedido.id,
-                "api_order_id": novo_pedido.api_order_id,
-                "novo_saldo": usuario.saldo,
-                "mensagem": "Seu pedido foi enviado e já está em processamento!"
-            }
-            
-        except httpx.RequestError:
-            async with db.begin():
-                novo_pedido.status = "Cancelado"
-                usuario.saldo = round(usuario.saldo + custo_total, 4)
-            raise HTTPException(status_code=503, detail="Falha de conexão com o servidor de distribuição.")
 
 @router.get("/historico", status_code=status.HTTP_200_OK)
 async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(get_db)):
-    """Busca todos os pedidos salvos do usuário autenticado para alimentar o front."""
+    """Busca o log completo de ordens locais para alimentar a tabela do HTML."""
     usuario_sessao = await obter_usuario_logado(request, db=db)
     if not usuario_sessao:
-        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
+        raise HTTPException(status_code=401, detail="Sessão inválida.")
 
     query = select(Pedido).where(Pedido.usuario_id == usuario_sessao.id).order_by(Pedido.id.desc())
     resultado = await db.execute(query)
@@ -143,25 +131,9 @@ async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(g
             "id": p.id,
             "servico": nome_servico,
             "link": p.link,
-            "quantidade": f"{p.quantity:,}".replace(",", "."),
+            "quantidade": f"{p.quantidade:,}".replace(",", "."),
             "custo": f"R$ {p.custo_total:.2f}".replace(".", ","),
             "status": p.status
         })
 
     return lista_pedidos
-
-@router.get("/servicos/lista")
-async def obter_lista_servicos_provedor():
-    """Busca la tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
-    params_provedor = {
-        "key": API_PROVEDOR_KEY,
-        "action": "services"
-    }
-    async with httpx.AsyncClient() as client:
-        try:
-            response = await client.post(API_PROVEDOR_URL, data=params_provedor, timeout=10.0)
-            if response.status_code != 200:
-                return []
-            return response.json()
-        except httpx.RequestError:
-            return []
