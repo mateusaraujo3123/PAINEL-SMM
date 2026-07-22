@@ -1,9 +1,8 @@
 import os
 import bcrypt
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles
 
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
@@ -16,7 +15,7 @@ from backend.app.models.models import Base, Usuario
 
 app = FastAPI(title="SMM Panel Premium")
 
-# CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES OFICIAL
+# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES OFICIAL
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
@@ -26,9 +25,6 @@ app.add_middleware(
 )
 
 templates = Jinja2Templates(directory=".")
-
-# MAPEAMENTO DE ARQUIVOS ESTÁTICOS (Resolve a quebra de layout)
-app.mount("/static", StaticFiles(directory="."), name="static")
 
 # ========================================================
 # 🔒 TRAVA DE SEGURANÇA EXCLUSIVA DO SEU PAINEL ADMIN
@@ -87,6 +83,20 @@ async def startup_event():
 from backend.app.routers import auth, pedidos
 app.include_router(auth.router)
 app.include_router(pedidos.router)
+
+# ========================================================
+# 📦 ROTAS DIRETAS DE ATIVOS CSS (Blindadas contra erro de Tipo MIME)
+# ========================================================
+@app.get("/login.css")
+async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
+@app.get("/dashboard.css")
+async def servir_dashboard_css(): return FileResponse("dashboard.css", media_type="text/css")
+@app.get("/novo-pedido.css")
+async def servir_novo_pedido_css(): return FileResponse("novo-pedido.css", media_type="text/css")
+@app.get("/lista-servicos.css")
+async def servir_lista_servicos_css(): return FileResponse("lista-servicos.css", media_type="text/css")
+@app.get("/historico-pedidos.css")
+async def servir_historico_pedidos_css(): return FileResponse("historico-pedidos.css", media_type="text/css")
 
 # ========================================================
 # 🚀 RENDERIZAÇÃO DE PÁGINAS HTML ATRAVÉS DO JINJA2
