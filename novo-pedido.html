@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Novo Pedido</title>
-    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
     <link rel="stylesheet" href="/novo-pedido.css">
 </head>
 <body>
@@ -30,7 +29,6 @@
             <a href="/integracao-api">🔌 Integração API</a>
         </div>
 
-        <!-- Perfil do Usuário Logado Dinâmico via Jinja2 -->
         <div class="user-profile-bar">
             <div style="width: 36px; height: 36px; background-color: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase;">
                 {{ usuario.username[0] if usuario else "U" }}
@@ -85,7 +83,6 @@
                     <input type="number" id="qtd" required placeholder="Mínimo 100">
                 </div>
 
-                <!-- Calculadora de Custo -->
                 <div class="price-display">
                     <span style="color: #9ca3af;">Custo do Pedido:</span>
                     <span id="totalPrice" style="color: #34c759; font-size: 18px;">R$ 0,00</span>
@@ -97,9 +94,7 @@
 
     </div>
 
-    <!-- JavaScript para automação e integração assíncrona -->
     <script>
-        // Controle de colapso do menu lateral
         document.getElementById('toggleMenu').addEventListener('click', () => {
             document.getElementById('sidebarMenu').classList.toggle('collapsed');
         });
@@ -111,9 +106,9 @@
         const formPedido = document.getElementById('orderForm');
         const btnSubmit = document.querySelector('.btn-submit');
 
-        let cacheCatalogo = {}; // Armazena a resposta da API na memória local do navegador
+        let cacheCatalogo = {};
 
-        // 🟢 CONSOME AS CATEGORIAS E SERVIÇOS DIRETO DO BACKEND (PROVEDOR SMM)
+        // 🟢 CORRIGIDO: Removido o padrão 'def' do Python que quebrava o JS do navegador
         async function carregarCatalogoProvedor() {
             try {
                 selectCategoria.innerHTML = '<option value="" disabled selected>Sincronizando catálogo...</option>';
@@ -122,9 +117,14 @@
                 if (!response.ok) throw new Error("Erro de conexão com a API local.");
                 
                 cacheCatalogo = await response.json();
+                
+                if (Object.keys(cacheCatalogo).length === 0) {
+                    selectCategoria.innerHTML = '<option value="" disabled>Nenhuma categoria encontrada (Verifique o Token da API Mãe)</option>';
+                    return;
+                }
+                
                 selectCategoria.innerHTML = '<option value="" disabled selected>Selecione uma categoria...</option>';
                 
-                // Insere as categorias retornadas pela API mãe no dropdown
                 Object.keys(cacheCatalogo).forEach(categoria => {
                     const opt = document.createElement('option');
                     opt.value = categoria;
@@ -137,7 +137,6 @@
             }
         }
 
-        // Filtra e reconstrói a caixa de serviços quando a categoria muda
         function filtrarServicosPorCategoria() {
             const categoriaSelecionada = selectCategoria.value;
             const servicosFiltrados = cacheCatalogo[categoriaSelecionada] || [];
@@ -157,7 +156,6 @@
             atualizarRegrasEPreco();
         }
 
-        // Atualiza os placeholders de limites (mínimo/máximo) e calcula o custo
         function atualizarRegrasEPreco() {
             const opt = selectServico.options[selectServico.selectedIndex];
             if (!opt) {
@@ -173,8 +171,8 @@
             inputQtd.placeholder = `Mínimo: ${parseInt(minQtd).toLocaleString('pt-BR')} | Máximo: ${parseInt(maxQtd).toLocaleString('pt-BR')}`;
             
             const precoPorMil = parseFloat(opt.getAttribute('data-preco'));
-            const quantidade = parseInt(inputQtd.value) || 0;
-            const custoTotal = (quantidade / 1000) * precoPorMil;
+            const quantityValue = parseInt(inputQtd.value) || 0;
+            const custoTotal = (quantityValue / 1000) * precoPorMil;
             
             displayPreco.innerText = 'R$ ' + custoTotal.toFixed(2).replace('.', ',');
         }
@@ -183,13 +181,10 @@
         inputQtd.addEventListener('input', atualizarRegrasEPreco);
         selectServico.addEventListener('change', atualizarRegrasEPreco);
 
-        // Executa a carga inicial da API assim que a página renderiza
         document.addEventListener('DOMContentLoaded', carregarCatalogoProvedor);
 
-        // DISPARO ASSÍNCRONO DA COMPRA PARA O FASTAPI
         formPedido.addEventListener('submit', async (e) => {
             e.preventDefault();
-            
             btnSubmit.disabled = true;
             btnSubmit.innerText = "Processando transação...";
 
@@ -207,13 +202,12 @@
                 });
 
                 const resultado = await response.json();
-                if (!response.ok) throw new Error(resultado.detail || "Erro interno no processamento.");
+                if (!response.ok) throw new Error(resultado.detail || "Erro interno.");
 
-                alert(`✅ Pedido Realizado!\nOrdem #${resultado.order_id} enviada com sucesso.\nID no Provedor: ${resultado.api_order_id}`);
+                alert(`✅ Pedido Realizado!\nOrdem #${resultado.order_id} despachada.`);
                 formPedido.reset();
                 displayPreco.innerText = 'R$ 0,00';
-                window.location.reload(); // Recarrega para atualizar o saldo dinamicamente na barra lateral
-
+                window.location.reload();
             } catch (error) {
                 alert(`❌ Erro no Envio:\n${error.message}`);
             } finally {
