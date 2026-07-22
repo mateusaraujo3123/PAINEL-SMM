@@ -1,10 +1,11 @@
+<!-- novo-pedido.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Novo Pedido</title>
-    <!-- Chamada absoluta limpa apontando para o arquivo com hífen na raiz -->
+    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
     <link rel="stylesheet" href="/novo-pedido.css">
 </head>
 <body>
@@ -61,29 +62,27 @@
             <form id="orderForm">
                 
                 <div class="form-group">
-                    <label>Categoria</label>
-                    <select id="categoria">
-                        <option value="instagram_seg">Instagram - Seguidores Brasileiros 🇧🇷</option>
-                        <option value="instagram_cur">Instagram - Curtidas Mundiais 🌍</option>
+                    <label for="categoria">Categoria</label>
+                    <select id="categoria" required>
+                        <option value="" disabled selected>Carregando categorias...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Serviço</label>
-                    <select id="servico">
-                        <option value="101" data-preco="12.50">[ID 101] Seguidores Orgânicos - R$ 12,50 por 1000</option>
-                        <option value="102" data-preco="8.90">[ID 102] Seguidores Alta Qualidade - R$ 8,90 por 1000</option>
+                    <label for="servico">Serviço</label>
+                    <select id="servico" required>
+                        <option value="" disabled selected>Selecione uma categoria primeiro...</option>
                     </select>
                 </div>
 
                 <div class="form-group">
-                    <label>Link do Perfil ou Publicação</label>
+                    <label for="link_url">Link do Perfil ou Publicação</label>
                     <input type="url" id="link_url" required placeholder="https://instagram.com">
                 </div>
 
                 <div class="form-group">
-                    <label>Quantidade</label>
-                    <input type="number" id="qtd" min="100" required placeholder="Mínimo 100">
+                    <label for="qtd">Quantidade</label>
+                    <input type="number" id="qtd" required placeholder="Mínimo 100">
                 </div>
 
                 <!-- Calculadora de Custo -->
@@ -98,62 +97,128 @@
 
     </div>
 
+    <!-- JavaScript para automação e integração assíncrona -->
     <script>
+        // Controle de colapso do menu lateral
         document.getElementById('toggleMenu').addEventListener('click', () => {
             document.getElementById('sidebarMenu').classList.toggle('collapsed');
         });
 
-        const inputQtd = document.getElementById('qtd');
+        const selectCategoria = document.getElementById('categoria');
         const selectServico = document.getElementById('servico');
+        const inputQtd = document.getElementById('qtd');
         const displayPreco = document.getElementById('totalPrice');
         const formPedido = document.getElementById('orderForm');
+        const btnSubmit = document.querySelector('.btn-submit');
 
-        function calcularPreco() {
-            const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
-            const precoPorMil = parseFloat(opcaoSelecionada.getAttribute('data-preco'));
+        let cacheCatalogo = {}; // Armazena a resposta da API na memória local do navegador
+
+        // 🟢 CONSOME AS CATEGORIAS E SERVIÇOS DIRETO DO BACKEND (PROVEDOR SMM)
+        async function carregarCatalogoProvedor() {
+            try {
+                selectCategoria.innerHTML = '<option value="" disabled selected>Sincronizando catálogo...</option>';
+                
+                const response = await fetch("/api/pedidos/servicos-api");
+                if (!response.ok) throw new Error("Erro de conexão com a API local.");
+                
+                cacheCatalogo = await response.json();
+                selectCategoria.innerHTML = '<option value="" disabled selected>Selecione uma categoria...</option>';
+                
+                // Insere as categorias retornadas pela API mãe no dropdown
+                Object.keys(cacheCatalogo).forEach(categoria => {
+                    const opt = document.createElement('option');
+                    opt.value = categoria;
+                    opt.textContent = categoria;
+                    selectCategoria.appendChild(opt);
+                });
+            } catch (error) {
+                console.error("Falha ao inicializar catálogo:", error);
+                selectCategoria.innerHTML = '<option value="" disabled>Erro ao carregar serviços</option>';
+            }
+        }
+
+        // Filtra e reconstrói a caixa de serviços quando a categoria muda
+        function filtrarServicosPorCategoria() {
+            const categoriaSelecionada = selectCategoria.value;
+            const servicosFiltrados = cacheCatalogo[categoriaSelecionada] || [];
+            
+            selectServico.innerHTML = '';
+            
+            servicosFiltrados.forEach(srv => {
+                const opt = document.createElement('option');
+                opt.value = srv.id;
+                opt.setAttribute('data-preco', srv.preco);
+                opt.setAttribute('data-min', srv.min);
+                opt.setAttribute('data-max', srv.max);
+                opt.textContent = `[ID ${srv.id}] ${srv.nome}`;
+                selectServico.appendChild(opt);
+            });
+            
+            atualizarRegrasEPreco();
+        }
+
+        // Atualiza os placeholders de limites (mínimo/máximo) e calcula o custo
+        function atualizarRegrasEPreco() {
+            const opt = selectServico.options[selectServico.selectedIndex];
+            if (!opt) {
+                displayPreco.innerText = 'R$ 0,00';
+                return;
+            }
+            
+            const minQtd = opt.getAttribute('data-min');
+            const maxQtd = opt.getAttribute('data-max');
+            
+            inputQtd.min = minQtd;
+            inputQtd.max = maxQtd;
+            inputQtd.placeholder = `Mínimo: ${parseInt(minQtd).toLocaleString('pt-BR')} | Máximo: ${parseInt(maxQtd).toLocaleString('pt-BR')}`;
+            
+            const precoPorMil = parseFloat(opt.getAttribute('data-preco'));
             const quantidade = parseInt(inputQtd.value) || 0;
-
             const custoTotal = (quantidade / 1000) * precoPorMil;
+            
             displayPreco.innerText = 'R$ ' + custoTotal.toFixed(2).replace('.', ',');
         }
 
-        inputQtd.addEventListener('input', calcularPreco);
-        selectServico.addEventListener('change', calcularPreco);
+        selectCategoria.addEventListener('change', filtrarServicosPorCategoria);
+        inputQtd.addEventListener('input', atualizarRegrasEPreco);
+        selectServico.addEventListener('change', atualizarRegrasEPreco);
 
+        // Executa a carga inicial da API assim que a página renderiza
+        document.addEventListener('DOMContentLoaded', carregarCatalogoProvedor);
+
+        // DISPARO ASSÍNCRONO DA COMPRA PARA O FASTAPI
         formPedido.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            btnSubmit.disabled = true;
+            btnSubmit.innerText = "Processando transação...";
 
-            const serviceId = parseInt(selectServico.value);
-            const targetLink = document.getElementById('link_url').value;
-            const quantityValue = parseInt(inputQtd.value);
+            const payload = {
+                service_id: parseInt(selectServico.value),
+                link: document.getElementById('link_url').value,
+                quantity: parseInt(inputQtd.value)
+            };
 
             try {
                 const response = await fetch("/api/pedidos/criar", {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        service_id: serviceId,
-                        link: targetLink,
-                        quantity: quantityValue
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(payload)
                 });
 
                 const resultado = await response.json();
+                if (!response.ok) throw new Error(resultado.detail || "Erro interno no processamento.");
 
-                if (!response.ok) {
-                    throw new Error(resultado.detail || "Falha ao processar o seu pedido.");
-                }
-
-                alert(`✅ Pedido Realizado!\nID da API Mãe: ${resultado.order_id || 'Processando'}\nSaldo Debitado com Sucesso.`);
+                alert(`✅ Pedido Realizado!\nOrdem #${resultado.order_id} enviada com sucesso.\nID no Provedor: ${resultado.api_order_id}`);
                 formPedido.reset();
                 displayPreco.innerText = 'R$ 0,00';
-                window.location.reload();
+                window.location.reload(); // Recarrega para atualizar o saldo dinamicamente na barra lateral
 
             } catch (error) {
-                console.error("Erro ao enviar pedido comercial:", error);
                 alert(`❌ Erro no Envio:\n${error.message}`);
+            } finally {
+                btnSubmit.disabled = false;
+                btnSubmit.innerText = "Confirmar e Descontar do Saldo";
             }
         });
     </script>
