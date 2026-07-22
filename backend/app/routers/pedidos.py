@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 import httpx
 from backend.app.database import get_db
 from backend.app.routers.auth import obter_usuario_logado
-from backend.app.models.models import Usuario, Pedido  # Importando seus modelos nativos
+from backend.app.models.models import Usuario, Pedido
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos"])
 
@@ -48,7 +48,6 @@ async def criar_pedido(
     custo_total = round((pedido.quantity / 1000) * preco_por_mil, 4)
 
     # 3. LOCK CONCORRENTE DE SALDO (Evita Double-Spending / Cliques Duplos)
-    # Abrimos o bloco begin() para o SQLite garantir isolamento absoluto na checagem
     async with db.begin():
         query = select(Usuario).where(Usuario.id == usuario_sessao.id).with_for_update()
         resultado = await db.execute(query)
@@ -73,9 +72,9 @@ async def criar_pedido(
             status="Processando"
         )
         db.add(novo_pedido)
-        await db.flush()  # Executa o push para gerar o ID do pedido local antes de ir para a API externa
+        await db.flush()
 
-    # 6. DISPARO ASSÍNCRONO PARA A API MÃE SMM (Fora do lock para não congelar o banco local)
+    # 6. DISPARO ASSÍNCRONO PARA A API MÃE SMM (Fora do lock)
     payload_provedor = {
         "key": API_PROVEDOR_KEY,
         "action": "add",
@@ -89,7 +88,6 @@ async def criar_pedido(
             response = await client.post(API_PROVEDOR_URL, data=payload_provedor, timeout=12.0)
             
             if response.status_code != 200:
-                # Se a API mãe cair, reabre transação curta e realiza o estorno de segurança
                 async with db.begin():
                     novo_pedido.status = "Cancelado"
                     usuario.saldo = round(usuario.saldo + custo_total, 4)
@@ -98,13 +96,12 @@ async def criar_pedido(
             dados_retorno = response.json()
             
             if "error" in dados_retorno:
-                # Se a API mãe recusar os parâmetros (link inválido, etc), faz o estorno
                 async with db.begin():
                     novo_pedido.status = "Cancelado"
                     usuario.saldo = round(usuario.saldo + custo_total, 4)
                 raise HTTPException(status_code=400, detail=dados_retorno["error"])
                 
-            # 7. SUCESSO: Vincula o ID retornado pela API Mãe ao pedido do banco local
+            # 7. SUCESSO: Vincula o ID retornado pela API Mãe
             async with db.begin():
                 novo_pedido.api_order_id = dados_retorno.get("order")
                 novo_pedido.status = "Em Processamento"
@@ -118,21 +115,48 @@ async def criar_pedido(
             }
             
         except httpx.RequestError:
-            # Tratamento de erro físico/queda de internet com estorno completo
             async with db.begin():
                 novo_pedido.status = "Cancelado"
                 usuario.saldo = round(usuario.saldo + custo_total, 4)
             raise HTTPException(status_code=503, detail="Falha de conexão com o servidor de distribuição.")
 
+@router.get("/historico", status_code=status.HTTP_200_OK)
+async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(get_db)):
+    """Busca todos os pedidos salvos do usuário autenticado para alimentar o front."""
+    usuario_sessao = await obter_usuario_logado(request, db=db)
+    if not usuario_sessao:
+        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
+
+    query = select(Pedido).where(Pedido.usuario_id == usuario_sessao.id).order_by(Pedido.id.desc())
+    resultado = await db.execute(query)
+    pedidos = resultado.scalars().all()
+
+    lista_pedidos = []
+    for p in pedidos:
+        nome_servico = f"[ID {p.servico_id}] Serviço SMM"
+        if p.servico_id == 101:
+            nome_servico = "[ID 101] Insta Seguidores Brasileiros"
+        elif p.servico_id == 102:
+            nome_servico = "[ID 102] Insta Curtidas Mundiais"
+
+        lista_pedidos.append({
+            "id": p.id,
+            "servico": nome_servico,
+            "link": p.link,
+            "quantidade": f"{p.quantity:,}".replace(",", "."),
+            "custo": f"R$ {p.custo_total:.2f}".replace(".", ","),
+            "status": p.status
+        })
+
+    return lista_pedidos
 
 @router.get("/servicos/lista")
 async def obter_lista_servicos_provedor():
-    """Busca a tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
+    """Busca la tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
     params_provedor = {
         "key": API_PROVEDOR_KEY,
         "action": "services"
     }
-    
     async with httpx.AsyncClient() as client:
         try:
             response = await client.post(API_PROVEDOR_URL, data=params_provedor, timeout=10.0)
