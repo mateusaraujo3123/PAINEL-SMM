@@ -12,3 +12,4 @@ python-multipart
 sqladmin
 itsdangerous
 authlib
+asyncpg>=0.29.0
