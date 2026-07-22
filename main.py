@@ -1,8 +1,12 @@
 import os
 import bcrypt
+import mimetypes
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+
+# Corrige o cabeçalho no Linux/Railway
+mimetypes.add_type("text/css", ".css", True)
 
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
@@ -15,7 +19,7 @@ from backend.app.models.models import Base, Usuario
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES OFICIAL
+# CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES OFICIAL STARLETTE
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
@@ -85,7 +89,7 @@ app.include_router(auth.router)
 app.include_router(pedidos.router)
 
 # ========================================================
-# 📦 ROTAS DIRETAS DE ATIVOS CSS (Blindadas contra erro de Tipo MIME)
+# 📦 ROTAS DIRETAS DE ATIVOS CSS (Corrigidas com o nome real do seu Github)
 # ========================================================
 @app.get("/login.css")
 async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
