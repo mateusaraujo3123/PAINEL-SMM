@@ -1,12 +1,11 @@
-<!-- novo-pedido.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel SMM - Novo Pedido</title>
-    <!-- Leitura direta e nativa do arquivo CSS na raiz -->
-    <link rel="stylesheet" href="/novo-pedido.css">
+    <!-- Rota mapeada corretamente para a pasta static -->
+    <link rel="stylesheet" href="/static/novo-pedido.css">
 </head>
 <body>
 
@@ -99,7 +98,6 @@
 
     </div>
 
-    <!-- JavaScript apenas para a inteligência da página -->
     <script>
         // Controle de colapso do menu lateral
         document.getElementById('toggleMenu').addEventListener('click', () => {
@@ -111,7 +109,6 @@
         const displayPreco = document.getElementById('totalPrice');
         const formPedido = document.getElementById('orderForm');
 
-        // Função nativa de cálculo automático do frontend
         function calcularPreco() {
             const opcaoSelecionada = selectServico.options[selectServico.selectedIndex];
             const precoPorMil = parseFloat(opcaoSelecionada.getAttribute('data-preco'));
@@ -124,7 +121,6 @@
         inputQtd.addEventListener('input', calcularPreco);
         selectServico.addEventListener('change', calcularPreco);
 
-        // DISPARO COMERCIAL DE PEDIDOS ASSÍNCRONO PARA O FASTAPI
         formPedido.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -133,7 +129,6 @@
             const quantityValue = parseInt(inputQtd.value);
 
             try {
-                // Rota comercial configurada em Pydantic no seu pedidos.py
                 const response = await fetch("/api/pedidos/criar", {
                     method: "POST",
                     headers: {
@@ -155,8 +150,6 @@
                 alert(`✅ Pedido Realizado!\nID da API Mãe: ${resultado.order_id || 'Processando'}\nSaldo Debitado com Sucesso.`);
                 formPedido.reset();
                 displayPreco.innerText = 'R$ 0,00';
-                
-                // Recarrega a página para atualizar o saldo visível do usuário logado
                 window.location.reload();
 
             } catch (error) {
