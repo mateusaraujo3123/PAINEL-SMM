@@ -8,7 +8,7 @@ logger = logging.getLogger("smm_provider")
 # =========================================================================
 # Sempre que precisar trocar de fornecedor SMM, altere apenas estes dados:
 FORNECEDOR_API_URL = "https://painelfamasocial.com.br/api/v2"  # Endpoint Fama Social
-FORNECEDOR_API_KEY = "SUA_CHAVE_DA_API_MAE"                  # Insira seu token de API real aqui
+FORNECEDOR_API_KEY = "99594c26a080da7a459caf5d48eb3c56"                  # Insira seu token de API real aqui
 # =========================================================================
 
 async def obter_servicos_fornecedor() -> list:
