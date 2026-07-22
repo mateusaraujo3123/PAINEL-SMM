@@ -5,7 +5,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 
-# Corrige o cabeçalho no Linux/Railway
+# Força o Linux e o Railway a entregarem os estilos como text/css
 mimetypes.add_type("text/css", ".css", True)
 
 # Importações do SQLAdmin e Segurança
@@ -89,7 +89,7 @@ app.include_router(auth.router)
 app.include_router(pedidos.router)
 
 # ========================================================
-# 📦 ROTAS DIRETAS DE ATIVOS CSS (Corrigidas com o nome real do seu Github)
+# 📦 ROTAS DIRETAS DE ATIVOS CSS (Sincronizadas com o seu Github)
 # ========================================================
 @app.get("/login.css")
 async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
