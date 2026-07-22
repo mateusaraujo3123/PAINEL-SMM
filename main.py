@@ -1,10 +1,9 @@
 import os
 import bcrypt
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-
-from starlette.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.staticfiles import StaticFiles  # 👈 Elemento essencial de alta performance
 
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
@@ -17,22 +16,26 @@ from backend.app.models.models import Base, Usuario
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDA (Sintaxe Oficial Starlette)
+# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES (Sintaxe Oficial Starlette)
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
     session_cookie="smm_admin_session",
     same_site="lax",
-    https_only=True     # Parâmetro oficial ajustado para HTTPS em produção
+    https_only=True
 )
 
 templates = Jinja2Templates(directory=".")
 
+# 📦 SERVIR ARQUIVOS ESTÁTICOS AUTOMATICAMENTE (Substitui todas as rotas manuais de CSS)
+# Ele vai ler todos os arquivos .css diretamente na raiz do seu repositório
+app.mount("/static", StaticFiles(directory="."), name="static")
+
 # ========================================================
 # 🔒 TRAVA DE SEGURANÇA EXCLUSIVA DO SEU PAINEL ADMIN
 # ========================================================
-ADMIN_USER = "leivisonmateus2021@gmail.com"  # Seu e-mail de acesso master
-ADMIN_PASS = "mathiasriquelme"  # Sua senha secreta master
+ADMIN_USER = "leivisonmateus2021@gmail.com"
+ADMIN_PASS = "mathiasriquelme"
 
 class AdminAuth(AuthenticationBackend):
     async def login(self, request: Request) -> bool:
@@ -58,9 +61,6 @@ class AdminAuth(AuthenticationBackend):
 provedor_autenticacao = AdminAuth(secret_key="CHAVE_SECRETA_ISOLADA_DO_ADMIN_SMM")
 admin = Admin(app, engine, title="Painel Admin SMM", base_url="/admin", authentication_backend=provedor_autenticacao)
 
-# ========================================================
-# 📈 CONTROLE DE USUÁRIOS NO PAINEL ADMIN
-# ========================================================
 class UsuarioAdmin(ModelView, model=Usuario):
     column_list = [Usuario.id, Usuario.username, Usuario.saldo]
     column_searchable_list = [Usuario.username]
@@ -78,33 +78,20 @@ class UsuarioAdmin(ModelView, model=Usuario):
 
 admin.add_view(UsuarioAdmin)
 
-# ========================================================
-# EVENTO DE STARTUP & CONFIGURAÇÕES DE ROTAS DO SISTEMA
-# ========================================================
 @app.on_event("startup")
 async def startup_event():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     print("🚀 Banco de dados SMM operacional e estável na nuvem!")
 
-# Importações dinâmicas tardias para evitar dependências circulares
+# Importações dinâmicas tardias para rotas comerciais
 from backend.app.routers import auth, pedidos
 app.include_router(auth.router)
 app.include_router(pedidos.router)
 
-# Rotas de arquivos estáticos CSS
-@app.get("/login.css")
-async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
-@app.get("/dashboard.css")
-async def servir_dashboard_css(): return FileResponse("dashboard.css", media_type="text/css")
-@app.get("/novo-pedido.css")
-async def servir_novo_pedido_css(): return FileResponse("novo-pedido.css", media_type="text/css")
-@app.get("/lista-servicos.css")
-async def servir_lista_servicos_css(): return FileResponse("lista-servicos.css", media_type="text/css")
-@app.get("/historico-pedidos.css")
-async def servir_historico_pedidos_css(): return FileResponse("historico-pedidos.css", media_type="text/css")
-
-# Renderização de Páginas HTML através do Jinja2
+# ========================================================
+# 🚀 RENDERIZAÇÃO DE PÁGINAS HTML ATRAVÉS DO JINJA2
+# ========================================================
 @app.get("/", response_class=HTMLResponse)
 async def login_page(request: Request):
     try:
