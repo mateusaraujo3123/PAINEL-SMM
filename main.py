@@ -1,153 +1,176 @@
-# main.py (Na raiz do repositório)
-import os
-import bcrypt
-from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+import httpx  # Cliente HTTP assíncrono para falar com a API mãe
+import logging
+from backend.app.database import get_db
+from backend.app.routers.auth import obter_usuario_logado # Para verificar quem está comprando
+from backend.app.models.models import Usuario, Pedido  # Seus modelos unificados
 
-from starlette.middleware.trustedhost import TrustedHostMiddleware
+logger = logging.getLogger("smm_pedidos")
+router = APIRouter(prefix="/api/pedidos", tags=["Pedidos"])
 
-# Importações do SQLAdmin e Segurança
-from sqladmin import Admin, ModelView
-from sqladmin.authentication import AuthenticationBackend
-from starlette.middleware.sessions import SessionMiddleware
+# Pydantic Schema Alinhado perfeitamente com o envio do seu JavaScript
+class PedidoSchema(BaseModel):
+    service_id: int
+    link: str = Field(..., min_length=5)
+    quantity: int = Field(..., gte=1)
 
-# Importações do banco e dos modelos
-from backend.app.database import engine, get_db
-from backend.app.models.models import Base, Usuario
+# CONFIGURAÇÃO DA API PROVEDORA (Substitua pelos dados da sua API mãe real)
+API_PROVEDOR_URL = "https://api-provedor-smm.com"
+API_PROVEDOR_KEY = "SUA_CHAVE_DA_API_MAE"
 
-app = FastAPI(title="SMM Panel Premium")
+# Tabela comercial de preços de custo (Sincronizada com os valores do seu select no HTML)
+PRECOS_PAINEL = {
+    101: 12.50,  # ID 101 -> R$ 12,50 por 1000 seguidores
+    102: 8.90    # ID 102 -> R$ 8,90 por 1000 seguidores
+}
 
-# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES CORRIGIDA (Sintaxe Oficial Starlette)
-app.add_middleware(
-    SessionMiddleware, 
-    secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
-    session_cookie="smm_admin_session",
-    same_site="lax",
-    https_only=True     # 👈 CORRIGIDO: O nome correto do parâmetro é https_only
-)
-
-templates = Jinja2Templates(directory=".")
-
-# ========================================================
-# 🔒 TRAVA DE SEGURANÇA EXCLUSIVA DO SEU PAINEL ADMIN
-# ========================================================
-ADMIN_USER = "leivisonmateus2021@gmail.com"  # Seu e-mail de acesso master
-ADMIN_PASS = "mathiasriquelme"  # Sua senha secreta master
-
-class AdminAuth(AuthenticationBackend):
-    async def login(self, request: Request) -> bool:
-        form = await request.form()
-        username = form.get("username")
-        password = form.get("password")
-
-        if username == ADMIN_USER and password == ADMIN_PASS:
-            request.session.update({"token": "sessao_admin_valida_smm"})
-            return True
-        return False
-
-    async def logout(self, request: Request) -> bool:
-        request.session.clear()
-        return True
-
-    async def authenticate(self, request: Request) -> bool:
-        token = request.session.get("token")
-        if token == "sessao_admin_valida_smm":
-            return True
-        return False
-
-provedor_autenticacao = AdminAuth(secret_key="CHAVE_SECRETA_ISOLADA_DO_ADMIN_SMM")
-admin = Admin(app, engine, title="Painel Admin SMM", base_url="/admin", authentication_backend=provedor_autenticacao)
-
-# ========================================================
-# 📈 CONTROLE DE USUÁRIOS NO PAINEL ADMIN
-# ========================================================
-class UsuarioAdmin(ModelView, model=Usuario):
-    column_list = [Usuario.id, Usuario.username, Usuario.saldo]
-    column_searchable_list = [Usuario.username]
-    form_columns = [Usuario.username, Usuario.password_hash, Usuario.saldo]
-    icon = "fa fa-users"
-    name = "Usuário"
-    plural_name = "Usuários"
+@router.post("/criar", status_code=status.HTTP_201_CREATED)
+async def criar_pedido(
+    request: Request, 
+    pedido: PedidoSchema, 
+    db: AsyncSession = Depends(get_db)
+):
+    """Recebe o pedido, checa e debita o saldo com Lock, e despacha para o provedor principal."""
     
-    async def on_model_change(self, data, model, is_created, request):
-        if "password_hash" in data and data["password_hash"]:
-            if not data["password_hash"].startswith("$2b$"):
-                salt = bcrypt.gensalt()
-                hashed = bcrypt.hashpw(data["password_hash"].encode('utf-8'), salt)
-                data["password_hash"] = hashed.decode('utf-8')
+    # 1. VALIDAÇÃO DE SEGURANÇA: Bloqueia o pedido se o usuário não estiver logado
+    usuario_sessao = await obter_usuario_logado(request, db=db)
+    if not usuario_sessao:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, 
+            detail="Sessão inválida ou expirada. Faça login novamente."
+        )
 
-admin.add_view(UsuarioAdmin)
+    # 2. VALIDAÇÃO COMERCIAL DE CUSTO: Descobre quanto o pedido vai custar
+    preco_por_mil = PRECOS_PAINEL.get(pedido.service_id)
+    if not preco_por_mil:
+        raise HTTPException(status_code=400, detail="O serviço selecionado é inválido ou não existe.")
 
-# ========================================================
-# EVENTO DE STARTUP & CONFIGURAÇÕES DE ROTAS DO SISTEMA
-# ========================================================
-@app.on_event("startup")
-async def startup_event():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    print("🚀 Banco de dados SMM operacional e estável na nuvem!")
+    custo_total = round((pedido.quantity / 1000) * preco_por_mil, 4)
 
-# Importações dinâmicas tardias para evitar dependências circulares
-from backend.app.routers import auth, pedidos
-app.include_router(auth.router)
-app.include_router(pedidos.router)
+    # 3. VALIDAÇÃO DE SALDO COM LOCK (Garante consulta limpa e segura no SQLite)
+    async with db.begin():
+        query = select(Usuario).where(Usuario.id == usuario_sessao.id).with_for_update()
+        resultado = await db.execute(query)
+        usuario_real = resultado.scalar_one_or_none()
 
-# Rotas de arquivos estáticos CSS
-@app.get("/login.css")
-async def servir_login_css(): return FileResponse("login.css", media_type="text/css")
-@app.get("/dashboard.css")
-async def servir_dashboard_css(): return FileResponse("dashboard.css", media_type="text/css")
-@app.get("/novo-pedido.css")
-async def servir_novo_pedido_css(): return FileResponse("novo-pedido.css", media_type="text/css")
-@app.get("/lista-servicos.css")
-async def servir_lista_servicos_css(): return FileResponse("lista-servicos.css", media_type="text/css")
-@app.get("/historico-pedidos.css")
-async def servir_historico_pedidos_css(): return FileResponse("historico-pedidos.css", media_type="text/css")
+        if not usuario_real or usuario_real.saldo < custo_total:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, 
+                detail=f"Saldo insuficiente. Este pedido custa R$ {custo_total:.2f} e você possui R$ {usuario_sessao.saldo:.2f}."
+            )
 
-# Renderização de Páginas HTML através do Jinja2
-@app.get("/", response_class=HTMLResponse)
-async def login_page(request: Request):
-    try:
-        async for session in get_db():
-            from backend.app.routers.auth import obter_usuario_logado
-            usuario = await obter_usuario_logado(request, db=session)
-            if usuario: return RedirectResponse(url="/dashboard", status_code=303)
-    except Exception: pass
-    return templates.TemplateResponse(request, name="index.html", context={"request": request})
+        # 4. REGRA DE NEGÓCIO: Debita o dinheiro da carteira local temporariamente antes da chamada de rede
+        usuario_real.saldo = round(usuario_real.saldo - custo_total, 4)
+        
+        # 5. REGISTRO LOCAL INICIAL: Salva a ordem como "Processando"
+        novo_pedido = Pedido(
+            usuario_id=usuario_real.id,
+            servico_id=pedido.service_id,
+            link=pedido.link,
+            quantidade=pedido.quantity,
+            custo_total=custo_total,
+            status="Processando"
+        )
+        db.add(novo_pedido)
+        await db.flush() # Sincroniza sem fechar a transação para fixar o ID do pedido
 
-@app.get("/dashboard", response_class=HTMLResponse)
-async def dashboard_page(request: Request):
-    try:
-        async for session in get_db():
-            from backend.app.routers.auth import obter_usuario_logado
-            usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="dashboard.html", context={"request": request, "usuario": usuario})
-    except Exception: return RedirectResponse(url="/", status_code=303)
+    # 6. Monta o payload no padrão exato exigido pelas APIs SMM mundiais
+    payload_provedor = {
+        "key": API_PROVEDOR_KEY,
+        "action": "add",
+        "service": pedido.service_id,
+        "link": pedido.link,
+        "quantity": pedido.quantity
+    }
+    
+    # 7. Faz o disparo assíncrono para a API Mãe SMM
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(API_PROVEDOR_URL, data=payload_provedor, timeout=12.0)
+            
+            if response.status_code != 200:
+                # Estorno automático em caso de falha de resposta da API mãe
+                async with db.begin():
+                    novo_pedido.status = "Cancelado"
+                    usuario_real.saldo = round(usuario_real.saldo + custo_total, 4)
+                raise HTTPException(status_code=502, detail="O provedor SMM principal demorou a responder.")
+                
+            dados_retorno = response.json()
+            
+            # Se a API mãe recusar a operação (ex: link quebrado, erro do servidor delas)
+            if "error" in dados_retorno:
+                async with db.begin():
+                    novo_pedido.status = "Cancelado"
+                    usuario_real.saldo = round(usuario_real.saldo + custo_total, 4)
+                raise HTTPException(status_code=400, detail=dados_retorno["error"])
+                
+            # SUCESSO: Confirma o processamento e anexa o ID externo gerado
+            async with db.begin():
+                novo_pedido.api_order_id = dados_retorno.get("order")
+                novo_pedido.status = "Em Processamento"
 
-@app.get("/novo-pedido", response_class=HTMLResponse)
-async def novo_pedido_page(request: Request):
-    try:
-        async for session in get_db():
-            from backend.app.routers.auth import obter_usuario_logado
-            usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="novo-pedido.html", context={"request": request, "usuario": usuario})
-    except Exception: return RedirectResponse(url="/", status_code=303)
+            return {
+                "status": "sucesso",
+                "order_id": novo_pedido.id,
+                "api_order_id": novo_pedido.api_order_id,
+                "mensagem": "Seu pedido foi enviado e já está em processamento!"
+            }
+            
+        except httpx.RequestError:
+            # Estorno automático em caso de falha de conexão física/infraestrutura
+            async with db.begin():
+                novo_pedido.status = "Cancelado"
+                usuario_real.saldo = round(usuario_real.saldo + custo_total, 4)
+            raise HTTPException(status_code=503, detail="Falha de conexão com o servidor de distribuição.")
 
-@app.get("/lista-servicos", response_class=HTMLResponse)
-async def servicos_page(request: Request):
-    try:
-        async for session in get_db():
-            from backend.app.routers.auth import obter_usuario_logado
-            usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="lista-servicos.html", context={"request": request, "usuario": usuario})
-    except Exception: return RedirectResponse(url="/", status_code=303)
 
-@app.get("/historico-pedidos", response_class=HTMLResponse)
-async def historico_page(request: Request):
-    try:
-        async for session in get_db():
-            from backend.app.routers.auth import obter_usuario_logado
-            usuario = await obter_usuario_logado(request, db=session)
-            return templates.TemplateResponse(request, name="historico-pedidos.html", context={"request": request, "usuario": usuario})
-    except Exception: return RedirectResponse(url="/", status_code=303)
+@router.get("/historico", status_code=status.HTTP_200_OK)
+async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(get_db)):
+    """Busca todos os pedidos salvos do usuário autenticado para alimentar a tabela."""
+    usuario_sessao = await obter_usuario_logado(request, db=db)
+    if not usuario_sessao:
+        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
+
+    query = select(Pedido).where(Pedido.usuario_id == usuario_sessao.id).order_by(Pedido.id.desc())
+    resultado = await db.execute(query)
+    pedidos = resultado.scalars().all()
+
+    lista_pedidos = []
+    for p in pedidos:
+        nome_servico = f"[ID {p.servico_id}] Serviço SMM"
+        if p.servico_id == 101:
+            nome_servico = "[ID 101] Insta Seguidores Brasileiros"
+        elif p.servico_id == 102:
+            nome_servico = "[ID 102] Insta Curtidas Mundiais"
+
+        lista_pedidos.append({
+            "id": p.id,
+            "servico": nome_servico,
+            "link": p.link,
+            "quantidade": f"{p.quantidade:,}".replace(",", "."),
+            "custo": f"R$ {p.custo_total:.2f}".replace(".", ","),
+            "status": p.status
+        })
+
+    return lista_pedidos
+
+
+@router.get("/servicos/lista")
+async def obter_lista_servicos_provedor():
+    """Busca a tabela de serviços diretamente na API Mãe SMM para alimentar o painel."""
+    params_provedor = {
+        "key": API_PROVEDOR_KEY,
+        "action": "services"
+    }
+    
+    async with httpx.AsyncClient() as client:
+        try:
+            response = await client.post(API_PROVEDOR_URL, data=params_provedor, timeout=10.0)
+            if response.status_code != 200:
+                return []
+            return response.json()
+        except httpx.RequestError:
+            return []
