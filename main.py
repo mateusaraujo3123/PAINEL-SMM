@@ -3,7 +3,7 @@ import bcrypt
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from fastapi.staticfiles import StaticFiles  # 👈 Elemento essencial de alta performance
+from fastapi.staticfiles import StaticFiles
 
 # Importações do SQLAdmin e Segurança
 from sqladmin import Admin, ModelView
@@ -16,7 +16,7 @@ from backend.app.models.models import Base, Usuario
 
 app = FastAPI(title="SMM Panel Premium")
 
-# 🔴 CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES (Sintaxe Oficial Starlette)
+# CONFIGURAÇÃO DO GERENCIADOR DE SESSÕES OFICIAL
 app.add_middleware(
     SessionMiddleware, 
     secret_key="CHAVE_DE_SESSAO_SUPER_SECRETA_SMM",
@@ -27,8 +27,7 @@ app.add_middleware(
 
 templates = Jinja2Templates(directory=".")
 
-# 📦 SERVIR ARQUIVOS ESTÁTICOS AUTOMATICAMENTE (Substitui todas as rotas manuais de CSS)
-# Ele vai ler todos os arquivos .css diretamente na raiz do seu repositório
+# MAPEAMENTO DE ARQUIVOS ESTÁTICOS (Resolve a quebra de layout)
 app.mount("/static", StaticFiles(directory="."), name="static")
 
 # ========================================================
@@ -84,7 +83,7 @@ async def startup_event():
         await conn.run_sync(Base.metadata.create_all)
     print("🚀 Banco de dados SMM operacional e estável na nuvem!")
 
-# Importações dinâmicas tardias para rotas comerciais
+# Importações dinâmicas das rotas comerciais
 from backend.app.routers import auth, pedidos
 app.include_router(auth.router)
 app.include_router(pedidos.router)
