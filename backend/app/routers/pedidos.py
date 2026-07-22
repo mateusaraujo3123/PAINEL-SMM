@@ -6,8 +6,8 @@ from backend.app.database import get_db
 from backend.app.routers.auth import obter_usuario_logado
 from backend.app.models.models import Usuario, Pedido
 
-# Injeta de forma desacoplada o motor modular do Fama Social
-from backend.app.services.smm_provider import despachar_ordem_provedor
+# Importação do motor isolado do fornecedor
+from backend.app.services.smm_provider import obter_servicos_fornecedor, despachar_ordem_provedor
 
 router = APIRouter(prefix="/api/pedidos", tags=["Pedidos"])
 
@@ -16,52 +16,74 @@ class PedidoSchema(BaseModel):
     link: str = Field(..., min_length=5)
     quantity: int = Field(..., gte=1)
 
-# Tabela comercial de preços de custo (Sincronizada com os valores do seu select no HTML)
-# IMPORTANTE: Mapeie o ID do serviço local com o preço que você quer cobrar do seu cliente
-PRECOS_PAINEL = {
-    101: 12.50,  # ID do seu HTML -> R$ 12,50 por 1000 envios
-    102: 8.90    # ID do seu HTML -> R$ 8,90 por 1000 envios
-}
+# =========================================================================
+# 📈 CONFIGURAÇÃO COMERCIAL DE PREÇOS (MARGEM DE LUCRO)
+# =========================================================================
+# Defina o multiplicador para calcular o seu preço de venda automaticamente.
+# Exemplo: 2.0 significa que se o custo no Fama Social for R$1,00, você cobrará R$2,00 (100% de lucro).
+MULTIPLICADOR_LUCRO = 2.0 
+# =========================================================================
+
+@router.get("/servicos-api")
+async def listar_servicos_filtrados(request: Request):
+    """Obtém os dados brutos da API mãe e estrutura em categorias para o seu front-end."""
+    servicos_brutos = await obter_servicos_fornecedor()
+    
+    # Organiza o catálogo misturado por blocos limpos de categorias
+    catalogo = {}
+    for item in servicos_brutos:
+        # Lê a taxa original em dólar/real e aplica a sua margem de lucro comercial
+        preco_custo = float(item.get("rate", 0.0))
+        preco_venda = round(preco_custo * MULTIPLICADOR_LUCRO, 2)
+        
+        categoria = item.get("category", "Outros Serviços")
+        if categoria not in catalogo:
+            catalogo[categoria] = []
+            
+        catalogo[categoria].append({
+            "id": int(item.get("service")),
+            "nome": item.get("name"),
+            "preco": preco_venda,
+            "min": int(item.get("min", 100)),
+            "max": int(item.get("max", 10000))
+        })
+    return catalogo
 
 @router.post("/criar", status_code=status.HTTP_201_CREATED)
-async def criar_pedido(
-    request: Request, 
-    pedido: PedidoSchema, 
-    db: AsyncSession = Depends(get_db)
-):
-    """Recebe a solicitação do front, debita com lock de segurança e despacha para o Fama Social."""
-    
-    # 1. VALIDAÇÃO DE SESSÃO
+async def criar_pedido(request: Request, pedido: PedidoSchema, db: AsyncSession = Depends(get_db)):
+    """Recebe o pedido, calcula dinamicamente baseado na tabela da API mãe e debita o saldo."""
     usuario_sessao = await obter_usuario_logado(request, db=db)
     if not usuario_sessao:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, 
-            detail="Sessão inválida ou expirada. Faça login novamente."
-        )
+        raise HTTPException(status_code=401, detail="Sessão expirada. Faça login novamente.")
 
-    # 2. VALIDAÇÃO COMERCIAL DE PREÇOS
-    preco_por_mil = PRECOS_PAINEL.get(pedido.service_id)
-    if not preco_por_mil:
-        raise HTTPException(status_code=400, detail="O serviço selecionado é inválido ou não existe.")
+    # Localiza o serviço na API mãe para saber o preço atualizado em tempo real
+    servicos_brutos = await obter_servicos_fornecedor()
+    servico_alvo = next((s for s in servicos_brutos if int(s.get("service")) == pedido.service_id), None)
+    
+    if not servico_alvo:
+        raise HTTPException(status_code=400, detail="Serviço indisponível no momento.")
 
-    custo_total = round((pedido.quantity / 1000) * preco_por_mil, 4)
+    # Valida limites de quantidade exigidos pelo provedor
+    min_qtd = int(servico_alvo.get("min", 100))
+    max_qtd = int(servico_alvo.get("max", 10000))
+    if pedido.quantity < min_qtd or pedido.quantity > max_qtd:
+        raise HTTPException(status_code=400, detail=f"Quantidade inválida. Permitido entre {min_qtd} e {max_qtd}.")
 
-    # 3. VERIFICAÇÃO ATÔMICA DE SALDO (Bloqueia a linha no SQLite contra fraudes de cliques múltiplos)
+    # Calcula o custo final baseado na sua margem configurada
+    preco_base = float(servico_alvo.get("rate", 0.0)) * MULTIPLICADOR_LUCRO
+    custo_total = round((pedido.quantity / 1000) * preco_base, 4)
+
+    # Executa a trava atômica de saldo no SQLite contra double-spending
     async with db.begin():
         query = select(Usuario).where(Usuario.id == usuario_sessao.id).with_for_update()
         resultado = await db.execute(query)
         usuario_real = resultado.scalar_one_or_none()
 
         if not usuario_real or usuario_real.saldo < custo_total:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail=f"Saldo insuficiente. Custo: R$ {custo_total:.2f} | Saldo disponível: R$ {usuario_sessao.saldo:.2f}."
-            )
+            raise HTTPException(status_code=400, detail=f"Saldo insuficiente. Custo: R$ {custo_total:.2f}")
 
-        # 4. DEBITA O SALDO IMEDIATAMENTE DA CARTEIRA DIGITAL LOCAL
+        # Registra o débito local e cria a ordem pendente
         usuario_real.saldo = round(usuario_real.saldo - custo_total, 4)
-        
-        # 5. REGISTRA A ORDEM LOCAL COMO "PROCESSANDO"
         novo_pedido = Pedido(
             usuario_id=usuario_real.id,
             servico_id=pedido.service_id,
@@ -71,46 +93,25 @@ async def criar_pedido(
             status="Processando"
         )
         db.add(novo_pedido)
-        await db.flush()  # Salva temporariamente para fixar o ID local antes do disparo externo
+        await db.flush()
 
-    # 6. DISPARO PARA A API MÃE (Chama o motor isolado do Fama Social)
-    # IMPORTANTE: Mapeie aqui se o ID do seu serviço do HTML for diferente do ID do provedor
-    id_provedor_real = pedido.service_id  # Se forem iguais, repassa direto. Caso contrário altere aqui.
+    # Despacha o sinal para o Painel Fama Social
+    api_order_id = await despachar_ordem_provedor(pedido.service_id, pedido.link, pedido.quantity)
     
-    api_order_id = await despachar_ordem_provedor(
-        service_id=id_provedor_real,
-        link=pedido.link,
-        quantity=pedido.quantity
-    )
-    
-    # 7. CONSOLIDAÇÃO TRANSACIONAL DO PROVEDOR EXTERNO
-    if api_order_id:
-        # Sucesso: Vincula o código de entrega gerado pelo Fama Social e altera o status
-        async with db.begin():
+    async with db.begin():
+        if api_order_id:
             novo_pedido.api_order_id = api_order_id
             novo_pedido.status = "Em Processamento"
-            
-        return {
-            "status": "sucesso",
-            "order_id": novo_pedido.id,
-            "api_order_id": api_order_id,
-            "mensagem": "Seu pedido foi enviado e já está em processamento!"
-        }
-    else:
-        # Estorno de Segurança: Se a API mãe recusar (Ex: fora do ar ou sem saldo), devolve o dinheiro na hora
-        async with db.begin():
+            return {"status": "sucesso", "order_id": novo_pedido.id, "api_order_id": api_order_id}
+        else:
+            # Reverte a transação devolvendo o saldo do cliente se o Fama Social falhar
             novo_pedido.status = "Cancelado"
             usuario_real.saldo = round(usuario_real.saldo + custo_total, 4)
-            
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, 
-            detail="O provedor SMM recusou a ordem ou está em manutenção. Seu saldo foi estornado."
-        )
-
+            raise HTTPException(status_code=502, detail="O provedor SMM recusou o processamento. Saldo estornado.")
 
 @router.get("/historico", status_code=status.HTTP_200_OK)
 async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(get_db)):
-    """Busca o log completo de ordens locais para alimentar a tabela do HTML."""
+    """Busca o histórico de ordens locais do usuário conectado."""
     usuario_sessao = await obter_usuario_logado(request, db=db)
     if not usuario_sessao:
         raise HTTPException(status_code=401, detail="Sessão inválida.")
@@ -119,21 +120,14 @@ async def obter_historico_pedidos(request: Request, db: AsyncSession = Depends(g
     resultado = await db.execute(query)
     pedidos = resultado.scalars().all()
 
-    lista_pedidos = []
+    lista = []
     for p in pedidos:
-        nome_servico = f"[ID {p.servico_id}] Serviço SMM"
-        if p.servico_id == 101:
-            nome_servico = "[ID 101] Insta Seguidores Brasileiros"
-        elif p.servico_id == 102:
-            nome_servico = "[ID 102] Insta Curtidas Mundiais"
-
-        lista_pedidos.append({
+        lista.append({
             "id": p.id,
-            "servico": nome_servico,
+            "servico": f"[ID {p.servico_id}] Serviço Automatizado",
             "link": p.link,
-            "quantidade": f"{p.quantidade:,}".replace(",", "."),
+            "quantidade": f"{p.quantity:,}".replace(",", "."),
             "custo": f"R$ {p.custo_total:.2f}".replace(".", ","),
             "status": p.status
         })
-
-    return lista_pedidos
+    return lista
