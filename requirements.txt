@@ -13,3 +13,4 @@ sqladmin
 itsdangerous
 authlib
 asyncpg>=0.29.0
+efi-api-sdk>=0.1.0
