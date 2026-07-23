@@ -1,9 +1,11 @@
 import os
 import bcrypt
 import mimetypes
+import base64
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from efi import EfiPay
 
 # Força o Linux e o Railway a entregarem os estilos como text/css
 mimetypes.add_type("text/css", ".css", True)
@@ -150,3 +152,62 @@ async def historico_page(request: Request):
             usuario = await obter_usuario_logado(request, db=session)
             return templates.TemplateResponse(request, name="historico-pedidos.html", context={"request": request, "usuario": usuario})
     except Exception: return RedirectResponse(url="/", status_code=303)
+
+# ========================================================
+# 💳 INTEGRAÇÃO SISTEMA DE PAGAMENTO VIA API PIX (EFÍ BANK)
+# ========================================================
+def obter_client_efi():
+    """Decodifica temporariamente o certificado da memória para a SDK da Efí"""
+    cert_base64 = os.getenv("EFI_CERTIFICADO_BASE64")
+    if not cert_base64:
+        raise HTTPException(status_code=500, detail="Certificado Efí não configurado nas variáveis.")
+    
+    cert_path = "/tmp/certificado_efi.p12"
+    with open(cert_path, "wb") as f:
+        f.write(base64.b64decode(cert_base64))
+        
+    efi_config = {
+        "client_id": os.getenv("EFI_CLIENT_ID"),
+        "client_secret": os.getenv("EFI_CLIENT_SECRET"),
+        "sandbox": False,
+        "certificate": cert_path
+    }
+    return EfiPay(efi_config)
+
+@app.get("/pagamento/gerar-pix", response_class=HTMLResponse)
+async def gerar_pagamento_pix(request: Request, valor: float):
+    if valor <= 0:
+        raise HTTPException(status_code=400, detail="O valor precisa ser maior que zero.")
+    
+    try:
+        # Inicia a API da Efí de forma segura
+        efi = obter_client_efi()
+        valor_formatado = f"{valor:.2f}"
+        
+        # 1. Monta os parâmetros do Pix
+        body = {
+            "calendario": {"expiracao": 3600},
+            "valor": {"original": valor_formatado},
+            "chave": os.getenv("EFI_CHAVE_PIX")
+        }
+        
+        # 2. Cria a cobrança imediata na Efí
+        cob_response = efi.pix_create_immediate_charge(body=body)
+        loc_id = cob_response.get("loc", {}).get("id")
+        
+        # 3. Gera a linha Copia e Cola e o QR Code em Imagem
+        qrcode_response = efi.pix_generate_qrcode(params={"id": str(loc_id)})
+        pix_copia_e_cola = qrcode_response.get("qrcode")
+        qr_code_base64 = qrcode_response.get("imagemQrcode")
+        
+        # 4. Envia os dados para renderizar na tela pagamento.html
+        return templates.TemplateResponse(request, name="pagamento.html", context={
+            "request": request,
+            "valor": valor_formatado,
+            "pix_copia_e_cola": pix_copia_e_cola,
+            "qr_code_base64": qr_code_base64
+        })
+        
+    except Exception as e:
+        print(f"❌ Erro crítico na API Efí Pix: {str(e)}")
+        raise HTTPException(status_code=500, detail="Não foi possível gerar seu Pix. Tente novamente.")
