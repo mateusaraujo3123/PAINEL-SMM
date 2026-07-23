@@ -1,9 +1,11 @@
-import httpx
+import os
 import uuid
+import httpx
+from datetime import datetime, timedelta, timezone
 
-PAGBANK_TOKEN = "SEU_TOKEN_AQUI"
-# Use https://sandbox.api.pagseguro.com para testes
-PAGBANK_URL = "https://api.pagseguro.com" 
+# Lê as credenciais das variáveis de ambiente do Railway para total segurança
+PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
+PAGBANK_URL = os.getenv("PAGBANK_URL", "https://api.pagseguro.com")
 
 class PagBankService:
     @staticmethod
@@ -20,18 +22,22 @@ class PagBankService:
         # Formata o valor para centavos exigido pela API Order do PagBank
         valor_centavos = int(valor * 100)
 
+        # Define a expiração exata usando UTC-3 (Horário de Brasília) exigido pelo PagBank
+        fuso_brasil = timezone(timedelta(hours=-3))
+        data_expiracao = (datetime.now(fuso_brasil) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S-03:00")
+
         payload = {
             "reference_id": referencia_internA,
             "customer": {
                 "name": username,
-                "email": f"{username}@smm.com" # Email placeholder ou use do usuário real
+                "email": f"{username}@smm.com"
             },
             "qr_codes": [
                 {
                     "amount": {
                         "value": valor_centavos
                     },
-                    "expiration_date": (httpx.utils.now() + 3600).strftime("%Y-%m-%dT%H:%M:%S-03:00") # Expira em 1 hora
+                    "expiration_date": data_expiracao
                 }
             ]
         }
@@ -44,7 +50,7 @@ class PagBankService:
             
             data = response.json()
             
-            # Extrai os dados do QR code dinâmico gerado
+            # Captura o primeiro elemento do array validado por você
             qr_code_info = data["qr_codes"][0]
             copy_paste = qr_code_info["text"]
             qr_code_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
