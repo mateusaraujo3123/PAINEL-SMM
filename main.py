@@ -84,10 +84,11 @@ async def startup_event():
         await conn.run_sync(Base.metadata.create_all)
     print("🚀 Banco de dados SMM operacional e estável na nuvem!")
 
-# Importações dinâmicas das rotas comerciais
-from backend.app.routers import auth, pedidos
+# Importações dinâmicas das rotas comerciais (Incluindo Pagamentos)
+from backend.app.routers import auth, pedidos, pagamentos
 app.include_router(auth.router)
 app.include_router(pedidos.router)
+app.include_router(pagamentos.router) # Injeta o novo router do PagBank de forma limpa
 
 # ========================================================
 # 📦 ROTAS DIRETAS DE ATIVOS CSS (Sincronizadas com o seu Github)
@@ -153,60 +154,55 @@ async def historico_page(request: Request):
     except Exception: return RedirectResponse(url="/", status_code=303)
 
 # ========================================================
-# 💳 INTEGRAÇÃO SISTEMA DE PAGAMENTO VIA API PIX (EFÍ BANK)
+# 🚀 RENDERIZAÇÃO DA PÁGINA DE PAGAMENTO (PAGBANK JINJA2)
 # ========================================================
-def obter_client_efi():
-    """Decodifica temporariamente o certificado da memória para a SDK da Efí"""
-    cert_base64 = os.getenv("EFI_CERTIFICADO_BASE64")
-    if not cert_base64:
-        raise HTTPException(status_code=500, detail="Certificado Efí não configurado nas variáveis.")
-    
-    cert_path = "/tmp/certificado_efi.p12"
-    with open(cert_path, "wb") as f:
-        f.write(base64.b64decode(cert_base64))
+@app.get("/pagamento", response_class=HTMLResponse)
+async def visualizar_pagamento(request: Request, referencia: str):
+    """Busca os dados do Pix dinâmico gerado e renderiza na interface do cliente"""
+    if not referencia:
+        raise HTTPException(status_code=400, detail="Referência inválida.")
         
-    efi_config = {
-        "client_id": os.getenv("EFI_CLIENT_ID"),
-        "client_secret": os.getenv("EFI_CLIENT_SECRET"),
-        "sandbox": False,
-        "certificate": cert_path
-    }
-    return EfiPay(efi_config)
-
-@app.get("/pagamento/gerar-pix", response_class=HTMLResponse)
-async def gerar_pagamento_pix(request: Request, valor: float):
-    if valor <= 0:
-        raise HTTPException(status_code=400, detail="O valor precisa ser maior que zero.")
-    
     try:
-        # Inicia a API da Efí de forma segura
-        efi = obter_client_efi()
-        valor_formatado = f"{valor:.2f}"
-        
-        # 1. Monta os parâmetros do Pix
-        body = {
-            "calendario": {"expiracao": 3600},
-            "valor": {"original": valor_formatado},
-            "chave": os.getenv("EFI_CHAVE_PIX")
-        }
-        
-        # 2. Cria a cobrança imediata na Efí
-        cob_response = efi.pix_create_immediate_charge(body=body)
-        loc_id = cob_response.get("loc", {}).get("id")
-        
-        # 3. Gera a linha Copia e Cola e o QR Code em Imagem
-        qrcode_response = efi.pix_generate_qrcode(params={"id": str(loc_id)})
-        pix_copia_e_cola = qrcode_response.get("qrcode")
-        qr_code_base64 = qrcode_response.get("imagemQrcode")
-        
-        # 4. Envia os dados para renderizar na tela pagamento.html
-        return templates.TemplateResponse(request, name="pagamento.html", context={
-            "request": request,
-            "valor": valor_formatado,
-            "pix_copia_e_cola": pix_copia_e_cola,
-            "qr_code_base64": qr_code_base64
-        })
-        
+        async for session in get_db():
+            from backend.app.models.models import Deposito
+            from sqlalchemy.future import select
+            
+            # Busca o depósito correspondente no SQLite local
+            stmt = select(Deposito).where(Deposito.referencia == referencia)
+            resultado = await session.execute(stmt)
+            deposito = resultado.scalar_one_or_none()
+            
+            if not deposito:
+                raise HTTPException(status_code=404, detail="Depósito não localizado.")
+                
+            # Como salvamos apenas os IDs na criação, geramos as variáveis para renderização
+            # NOTA: Adapte as chaves se você guardou o texto direto no modelo
+            from backend.app.services.pagbank import PAGBANK_URL, PAGBANK_TOKEN
+            import httpx
+            
+            # Consulta os dados em tempo real no PagBank para obter os hashes visuais com segurança
+            url = f"{PAGBANK_URL}/orders/{deposito.pagbank_id}"
+            headers = {"Authorization": f"Bearer {PAGBANK_TOKEN}", "accept": "application/json"}
+            
+            async with httpx.AsyncClient() as client:
+                res = await client.get(url, headers=headers)
+                if res.status_code == 200:
+                    data = res.json()
+                    qr_code_info = data["qr_codes"][0]
+                    qrcode_text = qr_code_info["text"]
+                    qrcode_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
+                    
+                    return templates.TemplateResponse(
+                        request, 
+                        name="pagamento.html", 
+                        context={
+                            "request": request,
+                            "valor": f"{deposito.valor:.2f}",
+                            "qrcode": qrcode_text,
+                            "qrcode_img": qrcode_img,
+                            "referencia": referencia
+                        }
+                    )
+    except HTTPException as he: raise he
     except Exception as e:
-        print(f"❌ Erro crítico na API Efí Pix: {str(e)}")
-        raise HTTPException(status_code=500, detail="Não foi possível gerar seu Pix. Tente novamente.")
+        raise HTTPException(status_code=500, detail=f"Erro interno de renderização: {str(e)}")
