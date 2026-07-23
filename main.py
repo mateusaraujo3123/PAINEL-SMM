@@ -1,3 +1,7 @@
+import sys
+import os
+# Adiciona a pasta backend ao sistema de caminhos do Python
+sys.path.append(os.path.join(os.path.dirname(__file__), 'backend'))
 import os
 import bcrypt
 import mimetypes
