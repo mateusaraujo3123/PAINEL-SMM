@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.database import get_db
-from app.models.models import Deposito, Usuario
-from app.services.pagbank import PagBankService
-# Importe aqui sua função existente de obter o usuário logado via JWT (Ex: obter_usuario_atual)
+
+# CORREÇÃO DE IMPORTS (Adicionando o prefixo backend.)
+from backend.app.database import get_db
+from backend.app.models.models import Deposito, Usuario
+from backend.app.services.pagbank import PagBankService
+from backend.app.routers.auth import obter_usuario_logado
+
 
 router = APIRouter(prefix="/api/pagamentos", tags=["Pagamentos"])
 
