@@ -12,7 +12,7 @@ from backend.app.routers.auth import obter_usuario_logado
 router = APIRouter(prefix="/api/pagamentos", tags=["Pagamentos"])
 
 @router.post("/adicionar-saldo")
-async def iniciar_deposito(payload: dict, db: AsyncSession = Depends(get_db), usuario_atual = Depends(obter_usuario_atual)):
+async def iniciar_deposito(payload: dict, db: AsyncSession = Depends(get_db), usuario_atual = Depends(obter_usuario_logado)):
     valor = float(payload.get("valor", 0))
     if valor < 10.0: # Regra de depósito mínimo
         raise HTTPException(status_code=400, detail="Depósito mínimo é de R$ 10,00")
