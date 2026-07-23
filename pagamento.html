@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finalizar Pagamento | SMM Premium</title>
+    <!-- Tailwind CSS direto da nuvem para o design ficar perfeito e moderno -->
+    <script src="https://tailwindcss.com"></script>
+</head>
+<body class="bg-[#0f172a] text-slate-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-[#1e293b] rounded-2xl shadow-2xl p-6 max-w-md w-full border border-slate-700/50">
+        <!-- Cabeçalho -->
+        <div class="text-center mb-6">
+            <h1 class="text-2xl font-bold text-violet-400">Adicionar Saldo</h1>
+            <p class="text-slate-400 text-sm mt-1">Siga o passo a passo para liberar seus créditos</p>
+        </div>
+
+        <!-- Instruções Visuais -->
+        <div class="space-y-4 mb-6">
+            <div class="flex items-start gap-3">
+                <div class="bg-violet-500/20 text-violet-400 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0 mt-0.5">1</div>
+                <div>
+                    <h3 class="font-semibold text-sm text-slate-200">Abra o aplicativo do seu Banco</h3>
+                    <p class="text-xs text-slate-400">Entre na área do Pix e selecione "Ler QR Code" ou "Pix Copia e Cola".</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="bg-violet-500/20 text-violet-400 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0 mt-0.5">2</div>
+                <div>
+                    <h3 class="font-semibold text-sm text-slate-200">Efetue o pagamento</h3>
+                    <p class="text-xs text-slate-400">Confira o valor na tela do banco. O pagamento vai direto para a Efí Bank.</p>
+                </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+                <div class="bg-violet-500/20 text-violet-400 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0 mt-0.5">3</div>
+                <div>
+                    <h3 class="font-semibold text-sm text-slate-200">Aprovação imediata</h3>
+                    <p class="text-xs text-slate-400">Após pagar, o saldo cai no seu painel de forma 100% automática.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bloco do QR Code Gerado pela Efí -->
+        <div class="bg-[#0b0f19] rounded-xl p-5 border border-slate-700 text-center space-y-4">
+            
+            <!-- Injeta o QR Code dinâmico em Base64 vindo do Python -->
+            <div class="bg-white p-2 rounded-lg inline-block shadow-inner">
+                <img src="{{ qr_code_base64 }}" alt="QR Code Pix" class="w-44 h-44 mx-auto">
+            </div>
+            
+            <div class="text-sm font-medium text-slate-400">
+                Valor a pagar: <span class="text-emerald-400 font-bold text-xl block mt-0.5">R$ {{ valor }}</span>
+            </div>
+
+            <!-- Botão do Copia e Cola -->
+            <div class="space-y-2">
+                <input type="text" id="pixCode" readonly value="{{ pix_copia_e_cola }}" 
+                       class="bg-[#1e293b] border border-slate-700 rounded-lg px-3 py-2.5 text-xs text-slate-400 w-full text-center focus:outline-none select-all truncate">
+                
+                <button onclick="copiarPix()" id="btnCopiar" class="w-full bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold py-2.5 rounded-lg transition-colors cursor-pointer shadow-lg shadow-violet-600/20">
+                    Copiar Código Pix
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Cópia Rápida no Celular -->
+    <script>
+        function copiarPix() {
+            var copyText = document.getElementById("pixCode");
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            navigator.clipboard.writeText(copyText.value);
+            
+            var btn = document.getElementById("btnCopiar");
+            btn.innerText = "✓ Copiado!";
+            btn.classList.remove("bg-violet-600");
+            btn.classList.add("bg-emerald-600");
+            
+            setTimeout(function() {
+                btn.innerText = "Copiar Código Pix";
+                btn.classList.remove("bg-emerald-600");
+                btn.classList.add("bg-violet-600");
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
