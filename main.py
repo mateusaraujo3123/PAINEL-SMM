@@ -5,7 +5,6 @@ import base64
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from efi import EfiPay
 
 # Força o Linux e o Railway a entregarem os estilos como text/css
 mimetypes.add_type("text/css", ".css", True)
