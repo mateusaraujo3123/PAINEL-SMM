@@ -13,6 +13,9 @@ class Usuario(Base):
 
     # Relacionamento de via dupla com os pedidos do usuário
     pedidos = relationship("Pedido", back_populates="usuario")
+    
+    # RELACIONAMENTO NOVO: Via dupla com as intenções de depósito via PagBank
+    depositos = relationship("Deposito", back_populates="usuario", cascade="all, delete-orphan")
 
 
 class Servico(Base):
@@ -46,3 +49,27 @@ class Pedido(Base):
     # Relacionamentos para consultas eficientes (Joins assíncronos)
     usuario = relationship("Usuario", back_populates="pedidos")
     servico = relationship("Servico")
+
+
+# MODELO NOVO: Rastreamento de transações Pix do PagBank
+class Deposito(Base):
+    __tablename__ = "depositos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
+    
+    # ID interno gerado pelo painel para enviar ao PagBank como 'reference_id'
+    referencia = Column(String, unique=True, index=True, nullable=False) 
+    
+    # ID retornado pelo PagBank após a criação da Order
+    pagbank_id = Column(String, unique=True, index=True, nullable=True) 
+    
+    valor = Column(Float, nullable=False)
+    
+    # Status possíveis: PENDENTE, PAGO, CANCELADO
+    status = Column(String, default="PENDENTE", index=True) 
+    
+    criado_em = Column(DateTime, default=datetime.utcnow)
+
+    # Relacionamento de via dupla para consultas eficientes
+    usuario = relationship("Usuario", back_populates="depositos")
