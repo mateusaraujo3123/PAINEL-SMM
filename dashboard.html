@@ -332,8 +332,8 @@
             const valorInput = document.getElementById("inputValorSaldo").value;
             const btn = document.getElementById("btnGerarPix");
 
-            if (!valorInput || parseFloat(valorInput) < 10) {
-                alert("Por favor, insira um valor válido de no mínimo R$ 10,00.");
+            if (!valorInput || parseFloat(valorInput) < 3) {
+                alert("Por favor, insira um valor válido de no mínimo R$ 3,00.");
                 return;
             }
 
