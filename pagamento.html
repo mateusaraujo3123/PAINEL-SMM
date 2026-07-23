@@ -4,10 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finalizar Pagamento | SMM Premium</title>
-    <!-- CDN Correta do Tailwind CSS para compilação em tempo real na nuvem -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://tailwindcss.com"></script>
     <script>
-        // Injeta a paleta Dark Premium oficial do seu projeto no Tailwind
         tailwind.config = {
             theme: {
                 extend: {
@@ -24,13 +22,11 @@
 <body class="bg-appleBackground text-slate-100 flex items-center justify-center min-h-screen p-4">
 
     <div class="bg-appleCard rounded-2xl shadow-2xl p-6 max-w-md w-full border border-appleBorder">
-        <!-- Cabeçalho -->
         <div class="text-center mb-6">
             <h1 class="text-2xl font-bold text-blue-500">Adicionar Saldo</h1>
             <p class="text-slate-400 text-sm mt-1">Siga o passo a passo para liberar seus créditos</p>
         </div>
 
-        <!-- Instruções Visuais Estilo Apple -->
         <div class="space-y-4 mb-6">
             <div class="flex items-start gap-3">
                 <div class="bg-blue-500/10 text-blue-500 font-bold rounded-full w-6 h-6 flex items-center justify-center text-xs shrink-0 mt-0.5">1</div>
@@ -57,10 +53,7 @@
             </div>
         </div>
 
-        <!-- Bloco do QR Code Gerado pelo PagBank -->
         <div class="bg-[#0d111d] rounded-xl p-5 border border-appleBorder text-center space-y-4">
-            
-            <!-- Link do QR Code Dinâmico injetado pelo seu backend python via jinja -->
             <div class="bg-white p-2 rounded-lg inline-block shadow-inner">
                 <img src="{{ qrcode_img }}" alt="QR Code Pix PagBank" class="w-44 h-44 mx-auto">
             </div>
@@ -69,7 +62,6 @@
                 Valor a pagar: <span class="text-emerald-400 font-bold text-xl block mt-0.5">R$ {{ valor }}</span>
             </div>
 
-            <!-- Botão do Copia e Cola -->
             <div class="space-y-2">
                 <input type="text" id="pixCode" readonly value="{{ qrcode }}" 
                        class="bg-appleCard border border-appleBorder rounded-lg px-3 py-2.5 text-xs text-slate-400 w-full text-center focus:outline-none select-all truncate">
@@ -81,7 +73,6 @@
         </div>
     </div>
 
-    <!-- Script de Cópia Rápida -->
     <script>
         function copiarPix() {
             var copyText = document.getElementById("pixCode");
@@ -100,6 +91,24 @@
                 btn.classList.add("bg-blue-600");
             }, 2000);
         }
+
+        // POLLING: Verifica a cada 4 segundos se o pagamento foi aprovado
+        const referencia = "{{ referencia }}";
+        async function verificarStatusPagamento() {
+            try {
+                const response = await fetch(`/api/pagamentos/status/${referencia}`);
+                if (response.ok) {
+                    const dados = await response.json();
+                    if (dados.status === "PAGO") {
+                        alert("🎉 Pagamento confirmado com sucesso! Seu saldo foi creditado.");
+                        window.location.href = "/dashboard";
+                    }
+                }
+            } catch (err) {
+                console.error("Erro ao verificar status:", err);
+            }
+        }
+        setInterval(verificarStatusPagamento, 4000);
     </script>
 </body>
 </html>
