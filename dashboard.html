@@ -174,7 +174,7 @@
         .txt-blue { color: #0a84ff !important; }
         .txt-purple { color: #bf5af2 !important; }
         
-        /* Novas Classes para o Formulário PagBank */
+        /* Classes do Painel PagBank */
         .pagbank-section {
             background-color: #161b26 !important;
             border: 1px solid #212936;
@@ -236,7 +236,8 @@
             <a href="/novo-pedido">🛒 Novo Pedido</a>
             <a href="/lista-servicos">⚡ Lista de Serviços</a>
             <a href="/historico-pedidos">📜 Histórico de Pedidos</a>
-            <a href="/adicionar-saldo">💳 Adicionar Saldo</a>
+            <!-- Rota corrigida aqui para evitar o Not Found -->
+            <a href="/pagamento?referencia=nova">💳 Adicionar Saldo</a>
             
             <div class="menu-group-title">Configurações</div>
             <a href="/meu-perfil">👤 Meu Perfil</a>
@@ -255,7 +256,6 @@
             </div>
         </div>
     </div>
-
     <!-- Área de Conteúdo Principal -->
     <div class="main-content">
         
@@ -295,9 +295,31 @@
             </div>
             <div class="metric-box">
                 <div class="metric-title">Status da Conta</div>
+                <div class="metric-number txt-blue">Premium</div>
+            </div>
+        </div>
+
+        <!-- Bloco de Adicionar Saldo PagBank -->
+        <div class="pagbank-section">
+            <h3 style="margin: 0 0 5px 0; font-size: 18px; font-weight: 700;">💳 Adicionar Saldo</h3>
+            <p style="margin: 0 0 20px 0; font-size: 13px; color: #9ca3af;">Gere um PIX dinâmico PagBank instantaneamente</p>
+            
+            <label style="font-size: 13px; color: #9ca3af; font-weight: 600;">Valor da Recarga (R$)</label>
+            <!-- Input essencial injetado para corrigir a quebra do JavaScript -->
+            <input type="number" id="inputValorSaldo" class="pagbank-input" min="10" placeholder="Ex: 50" required>
+            
+            <button onclick="solicitarPix()" id="btnGerarPix" class="pagbank-btn">Gerar Código PIX</button>
+            
+            <div style="margin-top: 15px; font-size: 11px; color: #4b5563; line-height: 1.4;">
+                ⚡ Compensação automática via webhook 24/7 de forma instantânea.
+            </div>
+        </div>
+
+    </div>
+
     <!-- Lógica de Operação do Painel (Vanilla JS) -->
     <script>
-        // 1. Controle do efeito colapso do Menu Lateral Lateral
+        // 1. Controle do efeito colapso do Menu Lateral
         const toggleMenuBtn = document.getElementById("toggleMenu");
         const sidebarMenu = document.getElementById("sidebarMenu");
 
