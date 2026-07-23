@@ -173,20 +173,51 @@
         .txt-green { color: #34c759 !important; }
         .txt-blue { color: #0a84ff !important; }
         .txt-purple { color: #bf5af2 !important; }
-        .status-footer {
-            display: flex;
-            justify-content: space-between;
+        
+        /* Novas Classes para o Formulário PagBank */
+        .pagbank-section {
             background-color: #161b26 !important;
-            padding: 16px 24px;
-            border-radius: 12px;
             border: 1px solid #212936;
-            margin-top: 40px;
-            flex-wrap: wrap;
-            gap: 15px;
+            border-radius: 14px;
+            padding: 30px;
+            margin-top: 30px;
+            max-width: 450px;
         }
-        .status-item {
-            font-size: 14px;
-            font-weight: 600;
+        .pagbank-input {
+            width: 100%;
+            background-color: #0d111d;
+            border: 1px solid #212936;
+            padding: 14px;
+            color: #ffffff;
+            border-radius: 10px;
+            font-size: 16px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .pagbank-input:focus {
+            border-color: #007aff;
+        }
+        .pagbank-btn {
+            width: 100%;
+            background-color: #007aff;
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .pagbank-btn:hover {
+            background-color: #0062cc;
+        }
+        .pagbank-btn:disabled {
+            background-color: #212936;
+            color: #9ca3af;
+            cursor: not-allowed;
         }
     </style>
 </head>
@@ -212,7 +243,6 @@
             <a href="/integracao-api">🔌 Integração API</a>
         </div>
 
-        <!-- Perfil do Usuário Logado Dinâmico -->
         <div class="user-profile-bar">
             <div style="width: 36px; height: 36px; background-color: #5856d6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; text-transform: uppercase;">
                 {{ usuario.username[0] if usuario else "U" }}
@@ -245,53 +275,70 @@
             </div>
             <div class="shortcut-card bg-orange" onclick="window.location.href='/lista-servicos'">
                 <span>⚡</span>
-                <div class="shortcut-title">Tabela de<br>Serviços</div>
+                <div class="shortcut-title">Lista de<br>Serviços</div>
             </div>
             <div class="shortcut-card bg-pink" onclick="window.location.href='/historico-pedidos'">
                 <span>📜</span>
-                <div class="shortcut-title">Histórico de<br>Solicitações</div>
+                <div class="shortcut-title">Histórico de<br>Pedidos</div>
             </div>
-            <div class="shortcut-card bg-blue" onclick="window.location.href='/adicionar-saldo'">
+            <div class="shortcut-card bg-blue">
                 <span>💳</span>
-                <div class="shortcut-title">Adicionar<br>Fundos</div>
+                <div class="shortcut-title">Saldo: R$ {{ "%.2f"|format(usuario.saldo) if usuario else "0,00" }}</div>
             </div>
         </div>
 
-        <!-- Grade de Mé tricas SMM -->
+        <!-- Métricas Rápidas -->
         <div class="metrics-grid">
             <div class="metric-box">
                 <div class="metric-title">Saldo Disponível</div>
-                <div class="metric-number txt-green">
-                    R$ {{ "{:,.2f}".format(usuario.saldo).replace(",", "X").replace(".", ",").replace("X", ".") if usuario else "0,00" }}
-                </div>
+                <div class="metric-number txt-green">R$ {{ "%.2f"|format(usuario.saldo) if usuario else "0,00" }}</div>
             </div>
             <div class="metric-box">
-                <div class="metric-title">Total de Pedidos</div>
-                <div class="metric-number txt-blue">0</div>
-            </div>
-            <div class="metric-box">
-                <div class="metric-title">Pedidos em Execução</div>
-                <div class="metric-number txt-purple">0</div>
-            </div>
-        </div>
-
-        <!-- Barra de Rodapé -->
-        <div class="status-footer">
-            <div class="status-item">Status da API Mãe: <span style="color: #34c759;">● Operando</span></div>
-            <div class="status-item">Velocidade Média de Envio: <span style="color: #0a84ff;">Instântanea</span></div>
-            <div class="status-item">Atualizado em tempo real</div>
-        </div>
-    </div> <!-- Fecha a div .main-content -->
-
-    <!-- Script de Navegação Lateral -->
+                <div class="metric-title">Status da Conta</div>
+    <!-- Lógica de Operação do Painel (Vanilla JS) -->
     <script>
-        const toggleMenu = document.getElementById('toggleMenu');
-        const sidebarMenu = document.getElementById('sidebarMenu');
+        // 1. Controle do efeito colapso do Menu Lateral Lateral
+        const toggleMenuBtn = document.getElementById("toggleMenu");
+        const sidebarMenu = document.getElementById("sidebarMenu");
 
-        toggleMenu.addEventListener('click', () => {
-            sidebarMenu.classList.toggle('collapsed');
+        toggleMenuBtn.addEventListener("click", () => {
+            sidebarMenu.classList.toggle("collapsed");
         });
+
+        // 2. Dispara a solicitação do PIX dinâmico do PagBank
+        async function solicitarPix() {
+            const valorInput = document.getElementById("inputValorSaldo").value;
+            const btn = document.getElementById("btnGerarPix");
+
+            if (!valorInput || parseFloat(valorInput) < 10) {
+                alert("Por favor, insira um valor válido de no mínimo R$ 10,00.");
+                return;
+            }
+
+            btn.innerText = "Gerando PIX...";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch("/api/pagamentos/adicionar-saldo", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ valor: parseFloat(valorInput) })
+                });
+
+                const dados = await response.json();
+                if (response.ok && dados.sucesso) {
+                    // Redireciona o navegador do usuário direto para a página visual do QR Code
+                    window.location.href = `/pagamento?referencia=${dados.referencia}`;
+                } else {
+                    alert("Erro PagBank: " + (dados.detail || "Tente novamente mais tarde."));
+                }
+            } catch (err) {
+                alert("Erro ao se conectar ao gateway de pagamentos.");
+            } finally {
+                btn.innerText = "Gerar Código PIX";
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
 </html>
-
