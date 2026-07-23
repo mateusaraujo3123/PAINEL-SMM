@@ -14,8 +14,8 @@ router = APIRouter(prefix="/api/pagamentos", tags=["Pagamentos"])
 @router.post("/adicionar-saldo")
 async def iniciar_deposito(payload: dict, db: AsyncSession = Depends(get_db), usuario_atual = Depends(obter_usuario_logado)):
     valor = float(payload.get("valor", 0))
-    if valor < 10.0: # Regra de depósito mínimo
-        raise HTTPException(status_code=400, detail="Depósito mínimo é de R$ 10,00")
+    if valor < 3.0: # Regra de depósito mínimo
+        raise HTTPException(status_code=400, detail="Depósito mínimo é de R$ 3,00")
 
     try:
         dados_pix = await PagBankService.criar_pix_deposito(valor, usuario_atual.username)
