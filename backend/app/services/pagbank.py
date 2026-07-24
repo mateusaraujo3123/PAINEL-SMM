@@ -9,7 +9,7 @@ PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
 class PagBankService:
     @staticmethod
     async def criar_pix_deposito(valor: float, username: str) -> dict:
-        """Gera um pedido com PIX no PagBank em Produção corrigindo o parâmetro proxy do HTTPX."""
+        """Gera um pedido com PIX no PagBank em Produção utilizando proxy residencial fixo no código."""
         referencia_internA = f"DEP-{uuid.uuid4().hex[:8].upper()}"
         
         headers = {
@@ -43,17 +43,18 @@ class PagBankService:
             ]
         }
 
-        # Configura o parâmetro de acordo com o httpx atual (usa 'proxy' no singular em vez de 'proxies')
-        proxy_url = os.getenv("PROXY_URL_RAILWAY", None)
+        # Cravado o seu proxy do Webshare diretamente para não falhar na leitura da Railway
+        proxy_url = "http://31.59.20"
 
         async with httpx.AsyncClient(proxy=proxy_url, follow_redirects=True, timeout=30.0) as client:
             try:
+                # CORREÇÃO CRÍTICA: Rota oficial de produção com v2/orders
                 url_final = "https://pagseguro.com"
                 response = await client.post(url_final, json=payload, headers=headers)
                 
                 # Se a Cloudflare retornar 200 mas for o desafio em HTML
                 if response.status_code == 200 and "<html" in response.text.lower():
-                    raise Exception("A Cloudflare barrou a chamada direta por IP de hospedagem. Adicione uma PROXY_URL_RAILWAY válida.")
+                    raise Exception("A Cloudflare barrou a chamada mesmo usando o proxy. Verifique se o proxy do Webshare continua ativo.")
 
                 if response.status_code != 201:
                     print(f"!!! BANCO RECUSOU A REQUISICAO: STATUS {response.status_code} !!!")
