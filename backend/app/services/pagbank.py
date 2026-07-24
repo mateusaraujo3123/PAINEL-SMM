@@ -45,23 +45,32 @@ class PagBankService:
         }
 
         async with httpx.AsyncClient() as client:
-            response = await client.post(f"{PAGBANK_URL}/orders", json=payload, headers=headers)
-            
-            if response.status_code != 201:
-                print(f"--- ERRO ENVIADO PELO PAGBANK: {response.text} ---")
-                raise Exception(f"Erro PagBank: {response.text}")
-            
-            data = response.json()
-            
-            # CORREÇÃO CRÍTICA DA SINTAXE DO DICIONÁRIO PYTHON:
-            # Acessa diretamente a posição [0] da lista retornada pelo PagBank para extrair as chaves de string
-            copy_paste = data["qr_codes"][0]["text"]
-            qr_code_img = next(link["href"] for link in data["qr_codes"][0]["links"] if link["rel"] == "QRCODE.PNG")
-            pagbank_id = data["id"]
+            try:
+                response = await client.post(f"{PAGBANK_URL}/orders", json=payload, headers=headers)
+                
+                # Se o banco rejeitar as credenciais, joga a resposta direta no log do Railway
+                if response.status_code != 201:
+                    print(f"!!! BANCO RECUSOU A REQUISICAO: STATUS {response.status_code} - RESPOSTA: {response.text} !!!")
+                    raise Exception(f"Erro PagBank: {response.text}")
+                
+                data = response.json()
+                
+                # Coleta estrita dos dados tratando os arrays internos
+                lista_qr = data.get("qr_codes", [])
+                if not lista_qr:
+                    raise Exception("A resposta do PagBank nao trouxe a lista de qr_codes.")
+                    
+                qr_code_info = lista_qr[0]
+                copy_paste = qr_code_info["text"]
+                qr_code_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
+                pagbank_id = data["id"]
 
-            return {
-                "pagbank_id": pagbank_id,
-                "referencia": referencia_internA,
-                "qrcode_text": copy_paste,
-                "qrcode_img": qr_code_img
-            }
+                return {
+                    "pagbank_id": pagbank_id,
+                    "referencia": referencia_internA,
+                    "qrcode_text": copy_paste,
+                    "qrcode_img": qr_code_img
+                }
+            except Exception as erro_interno:
+                print(f"!!! ERRO FATAL DE SINTAXE NO PYTHON: {str(erro_interno)} !!!")
+                raise erro_interno
