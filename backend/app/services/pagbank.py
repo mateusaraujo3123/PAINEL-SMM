@@ -3,21 +3,18 @@ import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
 
-# Lê as credenciais das variáveis de ambiente de forma segura
 PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "")
 
 class PagBankService:
     @staticmethod
     async def criar_pix_deposito(valor: float, username: str) -> dict:
-        """Gera um pedido com PIX no PagBank corrigindo o acesso à lista de qr_codes."""
+        """Gera um pedido com PIX no PagBank tratando cenários de ausência de arranjo Pix na conta."""
         try:
             referencia_internA = f"DEP-{uuid.uuid4().hex[:8].upper()}"
-            
-            token_string = str(PAGBANK_TOKEN)
-            token_limpo = token_string.replace("\n", "").replace("\r", "").strip()
+            token_limpo = str(PAGBANK_TOKEN).replace("\n", "").replace("\r", "").strip()
             
             if not token_limpo or token_limpo == "SEU_TOKEN_AQUI":
-                raise Exception("O PAGBANK_TOKEN nao foi configurado corretamente na Railway.")
+                raise Exception("O PAGBANK_TOKEN nao foi configurado na Railway.")
 
             headers = {
                 "Authorization": f"Bearer {token_limpo}",
@@ -27,7 +24,6 @@ class PagBankService:
             }
 
             valor_centavos = int(valor * 100)
-
             fuso_brasil = timezone(timedelta(hours=-3))
             data_expiracao = (datetime.now(fuso_brasil) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S-03:00")
 
@@ -55,15 +51,15 @@ class PagBankService:
                 response = await client.post(url_final, json=payload, headers=headers)
                 
                 if response.status_code != 201:
-                    raise Exception(f"Banco recusou o envio (Status {response.status_code}): {response.text}")
+                    raise Exception(f"Banco recusou (Status {response.status_code}): {response.text}")
                 
                 data = response.json()
-                
                 lista_qr = data.get("qr_codes", [])
-                if not lista_qr:
-                    raise Exception("A resposta do PagBank nao trouxe a lista de qr_codes.")
                 
-                # CORREÇÃO AQUI: Coleta o índice [0] do array de qr_codes antes de puxar as chaves
+                # VALIDAÇÃO SEGURA: Impede o erro de índice caso a conta não tenha Pix configurado
+                if not lista_qr or len(lista_qr) == 0:
+                    raise Exception("A conta vinculada a este Token nao possui chaves Pix ativas ou homologadas no PagBank.")
+                    
                 qr_code_info = lista_qr[0]
                 copy_paste = qr_code_info.get("text", "")
                 
@@ -81,6 +77,6 @@ class PagBankService:
                 }
 
         except Exception as erro_geral:
-            mensagem_formatada = f"Erro no Serviço PagBank: {str(erro_geral)}"
+            mensagem_formatada = str(erro_geral)
             print(f"!!! ERRO COMPLETO DETECTADO: {mensagem_formatada} !!!")
             raise Exception(mensagem_formatada)
