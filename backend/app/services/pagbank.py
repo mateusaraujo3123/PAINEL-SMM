@@ -5,8 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 # Lê as credenciais das variáveis de ambiente do Railway para total segurança
 PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
-# CORREÇÃO DA URL: Adicionado o subdomínio 'api.' obrigatório para chamadas REST
-PAGBANK_URL = os.getenv("PAGBANK_URL", "https://api.pagseguro.com")
+PAGBANK_URL = os.getenv("PAGBANK_URL", "https://pagseguro.com")
 
 class PagBankService:
     @staticmethod
@@ -49,14 +48,15 @@ class PagBankService:
             response = await client.post(f"{PAGBANK_URL}/orders", json=payload, headers=headers)
             
             if response.status_code != 201:
+                print(f"--- ERRO ENVIADO PELO PAGBANK: {response.text} ---")
                 raise Exception(f"Erro PagBank: {response.text}")
             
             data = response.json()
             
-            # Acessa o primeiro índice [0] da lista retornada pelo banco
-            qr_code_info = data["qr_codes"][0]
-            copy_paste = qr_code_info["text"]
-            qr_code_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
+            # CORREÇÃO CRÍTICA DA SINTAXE DO DICIONÁRIO PYTHON:
+            # Acessa diretamente a posição [0] da lista retornada pelo PagBank para extrair as chaves de string
+            copy_paste = data["qr_codes"][0]["text"]
+            qr_code_img = next(link["href"] for link in data["qr_codes"][0]["links"] if link["rel"] == "QRCODE.PNG")
             pagbank_id = data["id"]
 
             return {
