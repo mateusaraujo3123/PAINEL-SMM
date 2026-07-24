@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 
 # Lê as credenciais das variáveis de ambiente do Railway para total segurança
 PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
-PAGBANK_URL = os.getenv("PAGBANK_URL", "https://api.pagseguro.com")
+PAGBANK_URL = os.getenv("PAGBANK_URL", "https://pagseguro.com")
 
 class PagBankService:
     @staticmethod
@@ -26,7 +26,7 @@ class PagBankService:
         fuso_brasil = timezone(timedelta(hours=-3))
         data_expiracao = (datetime.now(fuso_brasil) + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%S-03:00")
 
-        # Seus dados fixos e higienizados enviados diretamente para a API do banco
+        # Dados estruturados e validados do titular para envio limpo à API do banco
         payload = {
             "reference_id": referencia_internA,
             "customer": {
@@ -52,7 +52,7 @@ class PagBankService:
             
             data = response.json()
             
-            # ATENÇÃO AQUI: Correção da posição [0] para ler a lista de qr_codes perfeitamente
+            # Correção sintática estrita: Acessa o primeiro índice [0] da lista retornada
             qr_code_info = data["qr_codes"][0]
             copy_paste = qr_code_info["text"]
             qr_code_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
