@@ -3,7 +3,7 @@ import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
 
-# Lê as credenciais das variáveis de ambiente do Railway para total segurança
+# Lê as credenciais   das variáveis de ambiente do Railway para total segurança
 PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
 PAGBANK_URL = os.getenv("PAGBANK_URL", "https://pagseguro.com")
 
