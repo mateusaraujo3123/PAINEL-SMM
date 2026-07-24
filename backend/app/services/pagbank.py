@@ -3,18 +3,19 @@ import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
 
-PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "")
-
 class PagBankService:
     @staticmethod
     async def criar_pix_deposito(valor: float, username: str) -> dict:
-        """Gera um pedido com PIX no PagBank tratando cenários de ausência de arranjo Pix na conta."""
+        """Gera um pedido com PIX no PagBank capturando até erros de variáveis globais."""
         try:
-            referencia_internA = f"DEP-{uuid.uuid4().hex[:8].upper()}"
-            token_limpo = str(PAGBANK_TOKEN).replace("\n", "").replace("\r", "").strip()
+            # Puxa o Token de forma segura DEIXANDO DENTRO DO BLOCO TRY
+            token_env = os.getenv("PAGBANK_TOKEN", "")
+            token_limpo = str(token_env).replace("\n", "").replace("\r", "").strip()
             
             if not token_limpo or token_limpo == "SEU_TOKEN_AQUI":
-                raise Exception("O PAGBANK_TOKEN nao foi configurado na Railway.")
+                raise ValueError("O PAGBANK_TOKEN nao foi configurado ou veio vazio da Railway.")
+
+            referencia_internA = f"DEP-{uuid.uuid4().hex[:8].upper()}"
 
             headers = {
                 "Authorization": f"Bearer {token_limpo}",
@@ -51,14 +52,13 @@ class PagBankService:
                 response = await client.post(url_final, json=payload, headers=headers)
                 
                 if response.status_code != 201:
-                    raise Exception(f"Banco recusou (Status {response.status_code}): {response.text}")
+                    raise RuntimeError(f"Banco recusou (Status {response.status_code}): {response.text}")
                 
                 data = response.json()
                 lista_qr = data.get("qr_codes", [])
                 
-                # VALIDAÇÃO SEGURA: Impede o erro de índice caso a conta não tenha Pix configurado
-                if not lista_qr or len(lista_qr) == 0:
-                    raise Exception("A conta vinculada a este Token nao possui chaves Pix ativas ou homologadas no PagBank.")
+                if not lista_qr:
+                    raise KeyError("A conta vinculada a este Token nao possui chaves Pix ativas ou homologadas no PagBank.")
                     
                 qr_code_info = lista_qr[0]
                 copy_paste = qr_code_info.get("text", "")
@@ -77,6 +77,7 @@ class PagBankService:
                 }
 
         except Exception as erro_geral:
-            mensagem_formatada = str(erro_geral)
-            print(f"!!! ERRO COMPLETO DETECTADO: {mensagem_formatada} !!!")
-            raise Exception(mensagem_formatada)
+            # O repr() impede mensagens vazias imprimindo o tipo do erro (ex: ValueError, TypeError)
+            mensagem_tecnica = repr(erro_geral)
+            print(f"!!! ERRO COMPLETO DETECTADO: {mensagem_tecnica} !!!")
+            raise Exception(mensagem_tecnica)
