@@ -3,9 +3,10 @@ import uuid
 import httpx
 from datetime import datetime, timedelta, timezone
 
-# Lê as credenciais   das variáveis de ambiente do Railway para total segurança
+# Lê as credenciais das variáveis de ambiente do Railway para total segurança
 PAGBANK_TOKEN = os.getenv("PAGBANK_TOKEN", "SEU_TOKEN_AQUI")
-PAGBANK_URL = os.getenv("PAGBANK_URL", "https://pagseguro.com")
+# CORREÇÃO DA URL: Adicionado o subdomínio 'api.' obrigatório para chamadas REST
+PAGBANK_URL = os.getenv("PAGBANK_URL", "https://api.pagseguro.com")
 
 class PagBankService:
     @staticmethod
@@ -52,7 +53,7 @@ class PagBankService:
             
             data = response.json()
             
-            # Correção sintática estrita: Acessa o primeiro índice [0] da lista retornada
+            # Acessa o primeiro índice [0] da lista retornada pelo banco
             qr_code_info = data["qr_codes"][0]
             copy_paste = qr_code_info["text"]
             qr_code_img = next(link["href"] for link in qr_code_info["links"] if link["rel"] == "QRCODE.PNG")
